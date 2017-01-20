@@ -23,5 +23,5 @@ object Environment {
   lazy val hadoopVersion = either("SPARK_HADOOP_VERSION", "2.7.3")
   lazy val sparkVersion  = either("SPARK_VERSION", "2.0.2")
   lazy val versionSuffix = either("GEOTRELLIS_VERSION_SUFFIX", "-SNAPSHOT")
-  lazy val ldLibraryPath = either("LD_LIBRARY_PATH", "/usr/local/lib")
+  lazy val ldLibraryPath = either("LD_LIBRARY_PATH", "/usr/lib")
 }
