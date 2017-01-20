@@ -3,8 +3,6 @@ package com.azavea.pointcloud.ingest.conf
 import geotrellis.raster.CellSize
 import geotrellis.vector.Extent
 
-import org.apache.spark.SparkContext
-
 object IngestConf {
   case class Options(
     inputPath: String = "file:///data/test/",

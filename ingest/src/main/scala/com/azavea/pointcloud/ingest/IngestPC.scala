@@ -1,22 +1,20 @@
 package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
+import io.pdal._
 
 import geotrellis.pointcloud.pipeline._
 import geotrellis.pointcloud.spark._
-import geotrellis.pointcloud.spark.dem.{PointCloudToDem, PointToGrid}
+import geotrellis.pointcloud.spark.io._
 import geotrellis.pointcloud.spark.io.hadoop._
-import geotrellis.pointcloud.spark.tiling.CutPointCloud
+import geotrellis.pointcloud.spark.tiling.Implicits.{withTilerMethods => withPCTilerMethods}
 import geotrellis.proj4.CRS
-import geotrellis.raster.io._
-import geotrellis.raster.io.geotiff.GeoTiff
 import geotrellis.raster._
 import geotrellis.spark._
 import geotrellis.spark.io._
 import geotrellis.spark.io.hadoop._
 import geotrellis.spark.io.index.ZCurveKeyIndexMethod
 import geotrellis.spark.io.kryo.KryoRegistrator
-import geotrellis.spark.pyramid.Pyramid
 import geotrellis.spark.tiling._
 import geotrellis.util._
 import geotrellis.vector._
@@ -25,7 +23,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
 
-object IngestIDWPyramid {
+object IngestPC {
   def main(args: Array[String]): Unit = {
     val opts      = IngestConf.parse(args)
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
@@ -68,87 +66,22 @@ object IngestIDWPyramid {
       val kb = KeyBounds(layout.mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](FloatConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
 
-      val tiled =
-        CutPointCloud(
-          source.flatMap(_._2),
-          layout
-        ).withContext {
-          _.reduceByKey({ (p1, p2) => p1 union p2 }, opts.numPartitions)
-        }
-
-      val tiles =
-        PointCloudToDem(
-          tiled, opts.cellSize,
-          PointToGrid.Options(cellType = FloatConstantNoDataCellType)
-        )
-
-      val layer = ContextRDD(tiles, md)
+      val rdd = source.flatMap(_._2)
+      val tiled = withPCTilerMethods(rdd).tileToLayout(layout)
+      val layer = ContextRDD(tiled, md)
 
       layer.cache()
 
-      def buildPyramid(zoom: Int, rdd: TileLayerRDD[SpatialKey])
-                      (sink: (TileLayerRDD[SpatialKey], Int) => Unit): List[(Int, TileLayerRDD[SpatialKey])] = {
-        if (zoom >= opts.minZoom) {
-          rdd.cache()
-          sink(rdd, zoom)
-          val pyramidLevel @ (nextZoom, nextRdd) = Pyramid.up(rdd, layoutScheme, zoom)
-          pyramidLevel :: buildPyramid(nextZoom, nextRdd)(sink)
-        } else {
-          sink(rdd, zoom)
-          List((zoom, rdd))
-        }
-      }
-
       if(opts.persist) {
         val writer = HadoopLayerWriter(new Path(opts.catalogPath))
-        val attributeStore = writer.attributeStore
 
-        var savedHisto = false
-        if (opts.pyramid) {
-          buildPyramid(zoom, layer) { (rdd, zoom) =>
-            writer
-              .write[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](
-              LayerId(opts.layerName, zoom),
-              rdd,
-              ZCurveKeyIndexMethod
-            )
-
-            println(s"=============================INGEST ZOOM LVL: $zoom=================================")
-
-            if (!savedHisto) {
-              savedHisto = true
-              val histogram = rdd.histogram(512)
-              attributeStore.write(
-                LayerId(opts.layerName, 0),
-                "histogram",
-                histogram
-              )
-            }
-          }.foreach { case (z, rdd) => rdd.unpersist(true) }
-        } else {
-          writer
-            .write[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](
+        writer
+          .write[SpatialKey, PointCloud, TileLayerMetadata[SpatialKey]](
             LayerId(opts.layerName, 0),
             layer,
             ZCurveKeyIndexMethod
           )
-
-          if (!savedHisto) {
-            savedHisto = true
-            val histogram = layer.histogram(512)
-            attributeStore.write(
-              LayerId(opts.layerName, 0),
-              "histogram",
-              histogram
-            )
-          }
-        }
-      }
-
-      if(opts.testOutput.nonEmpty) {
-        val raster = layer.stitch
-        GeoTiff(raster, crs).write(opts.testOutput)
-      } else if(!opts.persist) layer.count
+      } else layer.count()
 
       layer.unpersist(blocking = false)
       source.unpersist(blocking = false)
