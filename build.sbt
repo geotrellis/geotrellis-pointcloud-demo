@@ -15,9 +15,10 @@ lazy val commonSettings = Seq(
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
+  fork := true,
   fork in Test := true,
   parallelExecution in Test := false,
-  javaOptions += s"-Djava.library.path=${Environment.ldLibraryPath}",
+  javaOptions ++= Seq(s"-Djava.library.path=${Environment.ldLibraryPath}", "-Xmx10G"),
   test in assembly := {},
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   resolvers ++=
