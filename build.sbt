@@ -12,6 +12,7 @@ lazy val commonSettings = Seq(
     "-language:postfixOps",
     "-language:existentials",
     "-feature"),
+  outputStrategy := Some(StdoutOutput),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
@@ -38,6 +39,7 @@ lazy val commonSettings = Seq(
 lazy val root =
   Project("root", file("."))
     .aggregate(server, ingest)
+    .settings(commonSettings: _*)
 
 lazy val server =
   (project in file("server"))
