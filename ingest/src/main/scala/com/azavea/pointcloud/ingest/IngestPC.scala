@@ -42,7 +42,7 @@ object IngestPC {
         pipeline =
           Read("", opts.inputCrs) ~
             ReprojectionFilter(opts.destCrs) ~
-            RangeFilter(Some(s"Z[0:${opts.maxValue}]"))
+            opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
       )
 
       val source = HadoopPointCloudRDD(new Path(opts.inputPath), options).cache()

@@ -15,7 +15,7 @@ object IngestConf {
     cellSize: CellSize = CellSize(0.5, 0.5),
     numPartitions: Int = 5000,
     minZoom: Int = 7,
-    maxValue: Int = 400,
+    maxValue: Option[Int] = None,
     destCrs: String = "EPSG:3857",
     extent: Option[Extent] = None,
     inputCrs: Option[String] = None
