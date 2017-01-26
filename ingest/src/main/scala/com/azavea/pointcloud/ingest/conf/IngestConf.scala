@@ -82,7 +82,7 @@ object IngestConf {
       case "--minZoom" :: value :: tail =>
         nextOption(opts.copy(minZoom = value.toInt), tail)
       case "--maxValue" :: value :: tail =>
-        nextOption(opts.copy(maxValue = value.toInt), tail)
+        nextOption(opts.copy(maxValue = Some(value.toInt)), tail)
       case "--help" :: tail => {
         println(help)
         sys.exit(1)
