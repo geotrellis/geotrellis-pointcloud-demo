@@ -5,9 +5,9 @@ import geotrellis.vector.Extent
 
 object IngestConf {
   case class Options(
-    inputPath: String = "file:///data/test/",
-    catalogPath: String = "file:///data/catalog2",
-    testOutput: String = "/data/idw-ingest-out.tif",
+    inputPath: String = "/data/test/",
+    catalogPath: String = "/data/catalog2",
+    testOutput: String = "file:///tmp/idw-ingest-out.tif",
     layerName: String = "elevation",
     persist: Boolean = false,
     pyramid: Boolean = false,
