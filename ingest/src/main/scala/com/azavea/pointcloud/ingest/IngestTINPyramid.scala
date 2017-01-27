@@ -111,6 +111,7 @@ object IngestTINPyramid {
             keysToPoints.map { case (k, v) => (k, v.toArray) }
           }
           .reduceByKey({ (p1, p2) => p1 ++ p2 }, opts.numPartitions)
+          .filter { _._2.length > 2 }
 
       val tiles: RDD[(SpatialKey, Tile)] =
         TinToDem.withStitch(cut, layout, extent)
