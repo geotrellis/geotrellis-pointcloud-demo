@@ -1,29 +1,7 @@
-# [GeoTrellis PointCloud Demo]
-
-## Build
-
-### PDAL Build
- * Example scripts can be found [here](./scripts/other).
-
-### PDAL JNI Binaries build
- * README.md in the following directory: https://github.com/pomadchin/PDAL/tree/feature/pdal-jni/java
+# GeoTrellis PointCloud Demo
 
 ### This project build
- * `./sbt assembly`
- * As the only argument [com.azavea.PackedPointCount](https://github.com/pomadchin/geotrellis-pdal-benchmark/blob/master/src/main/scala/com/azavea/PackedPointCount.scala) accepts an HDFS path to files.
-
-## Run
-
-After everything installed on all Spark nodes, run your job:
-
-```bash
-spark-submit \
-  --conf spark.driver.extraJavaOptions="-Djava.library.path=/usr/lib/jni/" \
-  --class com.azavea.PackedPointCount \
-  geotrellis-pdal-assembly-0.1.0-SNAPSHOT.jar hdfs://{PATH}/
-```
-
-Instead of providing `-Djava.library.path` you may provide `$LD_LIBRARY_PATH` or `$DYLD_LIBRARY_PATH`.
+ * `./sbt ingest/assembly && ./sbt server/assembly` 
 
 ## Makefile
 
@@ -32,7 +10,12 @@ Instead of providing `-Djava.library.path` you may provide `$LD_LIBRARY_PATH` or
 |local-run         |Run benchmark job locally                                   |
 |upload-code       |Upload code and scripts to S3                               |
 |create-cluster    |Create EMR cluster with configurations                      |
-|run               |Add benchmar step to running cluster                        |
+|ingest-idw        |IDW ingest with or without pyramiding                       |
+|ingest-tin        |TIN ingest with or without pyramiding                       |
+|ingest-pc         |Raw PointCloud ingest without pyramiding yet                |
+|local-ingest-idw  |Local IDW ingest with or without pyramiding                 |
+|run-server        |Run server on EMR master                                    |
+|local-run-server  |Run server locally                                          |
 |wait              |Wait for last step to finish                                |
 |proxy             |Create SOCKS proxy for active cluster                       |
 |ssh               |SSH into cluster master                                     |
@@ -45,7 +28,7 @@ Instead of providing `-Djava.library.path` you may provide `$LD_LIBRARY_PATH` or
 
 _Requires_: Reasonably up to date [`aws-cli`](https://aws.amazon.com/cli/).
 
-EMR boostrup script would build PDAL wiht JNI bindings on each node.
+EMR boostrup script would build PDAL with JNI bindings on each node.
 
 ### Configuration
 
