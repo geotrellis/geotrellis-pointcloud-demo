@@ -145,10 +145,10 @@ object IngestIDWPyramid {
         }
       }
 
-      if(opts.testOutput.nonEmpty) {
-        val raster = layer.stitch
-        GeoTiff(raster, crs).write(opts.testOutput)
-      } else if(!opts.persist) layer.count
+      opts.testOutput match {
+        case Some(to) => GeoTiff(layer.stitch, crs).write(to)
+        case _ => if(!opts.persist) layer.count
+      }
 
       layer.unpersist(blocking = false)
       source.unpersist(blocking = false)

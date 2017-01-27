@@ -6,19 +6,19 @@ import geotrellis.vector.Extent
 object IngestConf {
   case class Options(
     inputPath: String = "/data/test/",
-    catalogPath: String = "/data/catalog2",
-    testOutput: String = "file:///tmp/idw-ingest-out.tif",
+    catalogPath: String = "/data/catalog",
     layerName: String = "elevation",
-    persist: Boolean = false,
-    pyramid: Boolean = false,
-    zoomed: Boolean = false,
+    persist: Boolean = true,
+    pyramid: Boolean = true,
+    zoomed: Boolean = true,
     cellSize: CellSize = CellSize(0.5, 0.5),
     numPartitions: Int = 5000,
     minZoom: Int = 7,
     maxValue: Option[Int] = None,
     destCrs: String = "EPSG:3857",
     extent: Option[Extent] = None,
-    inputCrs: Option[String] = None
+    inputCrs: Option[String] = None,
+    testOutput: Option[String] = None
   )
 
   val help = """
@@ -52,6 +52,8 @@ object IngestConf {
                |        minZoom is an integer value [default: 7]
                |  --maxValue <value>
                |        maxValue is an integer value [default: 400]
+               |  --testOutput <value>
+               |        testOutput is a non-empty String
                |  --help
                |        prints this usage text
              """.stripMargin
@@ -83,6 +85,8 @@ object IngestConf {
         nextOption(opts.copy(minZoom = value.toInt), tail)
       case "--maxValue" :: value :: tail =>
         nextOption(opts.copy(maxValue = Some(value.toInt)), tail)
+      case "--testOutput" :: value :: tail =>
+        nextOption(opts.copy(testOutput = Some(value)), tail)
       case "--help" :: tail => {
         println(help)
         sys.exit(1)
