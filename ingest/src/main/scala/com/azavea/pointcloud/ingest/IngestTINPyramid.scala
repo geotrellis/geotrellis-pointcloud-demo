@@ -41,6 +41,9 @@ object IngestTINPyramid {
 
   def main(args: Array[String]): Unit = {
     val opts      = IngestConf.parse(args)
+
+    println(s"opts: ${opts}")
+
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
 
     val conf = new SparkConf()
@@ -179,8 +182,10 @@ object IngestTINPyramid {
         }
       }
 
+      println(s"opts.testOutput: ${opts.testOutput}")
+
       opts.testOutput match {
-        case Some(to) => GeoTiff(layer.stitch, crs).write(to)
+        case Some(to) => { GeoTiff(layer.stitch, crs).write(to); HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"tmp33.tiff"), sc.hadoopConfiguration) }
         case _ => if(!opts.persist) layer.count
       }
 

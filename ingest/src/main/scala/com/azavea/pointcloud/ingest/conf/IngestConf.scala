@@ -73,6 +73,8 @@ object IngestConf {
         nextOption(opts.copy(inputCrs = Some(value)), tail)
       case "--destCrs" :: value :: tail =>
         nextOption(opts.copy(destCrs = value), tail)
+      case "--persist" :: value :: tail =>
+        nextOption(opts.copy(persist = value.toBoolean), tail)
       case "--pyramid" :: value :: tail =>
         nextOption(opts.copy(pyramid = value.toBoolean), tail)
       case "--zoomed" :: value :: tail =>
