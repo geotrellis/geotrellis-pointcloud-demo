@@ -39,7 +39,7 @@ object IngestTINPyramid {
 
   def main(args: Array[String]): Unit = {
     val opts      = IngestConf.parse(args)
-    println(s"opts: ${opts}")
+    println(s":::opts: ${opts}")
 
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
 
@@ -75,18 +75,24 @@ object IngestTINPyramid {
           case _ =>  if (crs.epsgCode != targetCrs.epsgCode) extent.reproject(crs, targetCrs) else extent
         }
 
-      println(s"targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
+      println(s":::targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
 
       val layoutScheme = if (opts.pyramid || opts.zoomed) ZoomedLayoutScheme(targetCrs) else FloatingLayoutScheme(512)
 
-      val LayoutLevel(zoom, layout) = layoutScheme.levelFor(targetExtent, opts.cellSize)
+      val (zoom, layout) = opts.maxZoom match {
+        case Some(z) => z -> ZoomedLayoutScheme.layoutForZoom(z, targetExtent)
+        case _ => {
+          val LayoutLevel(z, l) = layoutScheme.levelFor(targetExtent, opts.cellSize)
+          z -> l
+        }
+      }
       val mapTransform = layout.mapTransform
       val kb = KeyBounds(mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](DoubleConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
 
       val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
 
-      println(s"pointsCount: ${pointsCount}")
+      println(s":::pointsCount: ${pointsCount}")
 
       val cut: RDD[(SpatialKey, Array[Coordinate])] =
         source
@@ -118,7 +124,10 @@ object IngestTINPyramid {
           }
           .reduceByKey({ (p1, p2) => p1 ++ p2 }, opts.numPartitions)
           .filter { _._2.length > 2 }
-        .map { case (k, v) => println(s":::::::::length ($k): ${v.length}"); k -> v }
+
+      cut.foreach { case (k, v) =>
+        println(s":::perTileDensity: ${k} -> ${v.length}")
+      }
 
       val tiles: RDD[(SpatialKey, Tile)] =
         TinToDem.allStitch(cut, layout, extent)
@@ -129,7 +138,7 @@ object IngestTINPyramid {
 
       def buildPyramid(zoom: Int, rdd: TileLayerRDD[SpatialKey])
                       (sink: (TileLayerRDD[SpatialKey], Int) => Unit): List[(Int, TileLayerRDD[SpatialKey])] = {
-        println(s"buildPyramid: $zoom")
+        println(s":::buildPyramid: $zoom")
         if (zoom >= opts.minZoom) {
           rdd.cache()
           sink(rdd, zoom)
@@ -192,7 +201,7 @@ object IngestTINPyramid {
           GeoTiff(layer.stitch, crs).write(to)
           HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"${to.split("/").last}"), sc.hadoopConfiguration)
         }
-        case _ => if(!opts.persist) println(s"layer.count: ${layer.count}")
+        case _ => if(!opts.persist) println(s":::layer.count: ${layer.count}")
       }
 
       layer.unpersist(blocking = false)
