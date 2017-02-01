@@ -29,9 +29,9 @@ lazy val commonSettings = Seq(
     ),
 
   assemblyMergeStrategy in assembly := {
+    case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
+    case m if m.toLowerCase.matches("meta-inf.*\\.sf$") => MergeStrategy.discard
     case "reference.conf" | "application.conf" => MergeStrategy.concat
-    case "META-INF/MANIFEST.MF" | "META-INF\\MANIFEST.MF" => MergeStrategy.discard
-    case "META-INF/ECLIPSEF.RSA" | "META-INF/ECLIPSEF.SF" => MergeStrategy.discard
     case _ => MergeStrategy.first
   }
 )

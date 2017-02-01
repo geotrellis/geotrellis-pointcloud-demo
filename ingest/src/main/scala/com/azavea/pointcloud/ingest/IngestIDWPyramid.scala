@@ -1,13 +1,12 @@
 package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
-
 import geotrellis.pointcloud.pipeline._
 import geotrellis.pointcloud.spark._
 import geotrellis.pointcloud.spark.dem.{PointCloudToDem, PointToGrid}
 import geotrellis.pointcloud.spark.io.hadoop._
 import geotrellis.pointcloud.spark.tiling.CutPointCloud
-import geotrellis.proj4.CRS
+import geotrellis.proj4.{CRS, LatLng}
 import geotrellis.raster.io._
 import geotrellis.raster.io.geotiff.GeoTiff
 import geotrellis.raster._
@@ -20,20 +19,22 @@ import geotrellis.spark.pyramid.Pyramid
 import geotrellis.spark.tiling._
 import geotrellis.util._
 import geotrellis.vector._
-
 import org.apache.hadoop.fs.Path
+import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
 
 object IngestIDWPyramid {
   def main(args: Array[String]): Unit = {
     val opts      = IngestConf.parse(args)
+    println(s"opts: ${opts}")
+
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
 
     val conf = new SparkConf()
       .setIfMissing("spark.master", "local[*]")
       .setAppName("PointCloudCount")
-      .set("spark.local.dir", "/data/spark")
+      //.set("spark.local.dir", "/data/spark")
       .set("spark.serializer", classOf[KryoSerializer].getName)
       .set("spark.kryo.registrator", classOf[KryoRegistrator].getName)
 
@@ -47,7 +48,7 @@ object IngestIDWPyramid {
             opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
       )
 
-      val source = HadoopPointCloudRDD(new Path(opts.inputPath), options).cache()
+      val source = HadoopPointCloudRDD(new Path(opts.inputPath), options) //.cache()
 
       val (extent, crs) =
         source
@@ -62,11 +63,17 @@ object IngestIDWPyramid {
           case _ =>  if (crs.epsgCode != targetCrs.epsgCode) extent.reproject(crs, targetCrs) else extent
         }
 
+      println(s"targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
+
       val layoutScheme = if (opts.pyramid || opts.zoomed) ZoomedLayoutScheme(targetCrs) else FloatingLayoutScheme(512)
 
       val LayoutLevel(zoom, layout) = layoutScheme.levelFor(targetExtent, opts.cellSize)
       val kb = KeyBounds(layout.mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](FloatConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
+
+      val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
+
+      println(s"pointsCount: ${pointsCount}")
 
       val tiled =
         CutPointCloud(
@@ -88,6 +95,7 @@ object IngestIDWPyramid {
 
       def buildPyramid(zoom: Int, rdd: TileLayerRDD[SpatialKey])
                       (sink: (TileLayerRDD[SpatialKey], Int) => Unit): List[(Int, TileLayerRDD[SpatialKey])] = {
+        println(s"buildPyramid: $zoom")
         if (zoom >= opts.minZoom) {
           rdd.cache()
           sink(rdd, zoom)
@@ -146,7 +154,10 @@ object IngestIDWPyramid {
       }
 
       opts.testOutput match {
-        case Some(to) => GeoTiff(layer.stitch, crs).write(to)
+        case Some(to) => {
+          GeoTiff(layer.stitch, crs).write(to)
+          HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"${to.split("/").last}"), sc.hadoopConfiguration)
+        }
         case _ => if(!opts.persist) layer.count
       }
 
