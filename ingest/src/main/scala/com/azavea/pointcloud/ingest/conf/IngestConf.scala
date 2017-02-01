@@ -14,6 +14,7 @@ object IngestConf {
     cellSize: CellSize = CellSize(0.5, 0.5),
     numPartitions: Int = 5000,
     minZoom: Int = 7,
+    maxZoom: Option[Int] = None,
     maxValue: Option[Int] = None,
     destCrs: String = "EPSG:3857",
     extent: Option[Extent] = None,
@@ -50,6 +51,8 @@ object IngestConf {
                |        numPatition is an integer value [default: 5000]
                |  --minZoom <value>
                |        minZoom is an integer value [default: 7]
+               |  --maxZoom <value>
+               |        maxZoom is an integer value
                |  --maxValue <value>
                |        maxValue is an integer value [default: 400]
                |  --testOutput <value>
@@ -85,6 +88,8 @@ object IngestConf {
         nextOption(opts.copy(numPartitions = value.toInt), tail)
       case "--minZoom" :: value :: tail =>
         nextOption(opts.copy(minZoom = value.toInt), tail)
+      case "--maxZoom" :: value :: tail =>
+        nextOption(opts.copy(maxZoom = Option(value.toInt)), tail)
       case "--maxValue" :: value :: tail =>
         nextOption(opts.copy(maxValue = Some(value.toInt)), tail)
       case "--testOutput" :: value :: tail =>
