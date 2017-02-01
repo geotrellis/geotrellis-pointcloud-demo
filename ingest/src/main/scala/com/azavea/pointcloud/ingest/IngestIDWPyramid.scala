@@ -27,7 +27,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 object IngestIDWPyramid {
   def main(args: Array[String]): Unit = {
     val opts      = IngestConf.parse(args)
-    println(s"opts: ${opts}")
+    println(s":::opts: ${opts}")
 
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
 
@@ -63,17 +63,23 @@ object IngestIDWPyramid {
           case _ =>  if (crs.epsgCode != targetCrs.epsgCode) extent.reproject(crs, targetCrs) else extent
         }
 
-      println(s"targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
+      println(s":::targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
 
       val layoutScheme = if (opts.pyramid || opts.zoomed) ZoomedLayoutScheme(targetCrs) else FloatingLayoutScheme(512)
 
-      val LayoutLevel(zoom, layout) = layoutScheme.levelFor(targetExtent, opts.cellSize)
+      val (zoom, layout) = opts.maxZoom match {
+        case Some(z) => z -> ZoomedLayoutScheme.layoutForZoom(z, targetExtent)
+        case _ => {
+          val LayoutLevel(z, l) = layoutScheme.levelFor(targetExtent, opts.cellSize)
+          z -> l
+        }
+      }
       val kb = KeyBounds(layout.mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](FloatConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
 
       val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
 
-      println(s"pointsCount: ${pointsCount}")
+      println(s":::pointsCount: ${pointsCount}")
 
       val tiled =
         CutPointCloud(
@@ -82,6 +88,10 @@ object IngestIDWPyramid {
         ).withContext {
           _.reduceByKey({ (p1, p2) => p1 union p2 }, opts.numPartitions)
         }
+
+      tiled.foreach { case (k, v) =>
+        println(s":::perTileDensity: ${k} -> ${v.length}")
+      }
 
       val tiles =
         PointCloudToDem(
@@ -95,7 +105,7 @@ object IngestIDWPyramid {
 
       def buildPyramid(zoom: Int, rdd: TileLayerRDD[SpatialKey])
                       (sink: (TileLayerRDD[SpatialKey], Int) => Unit): List[(Int, TileLayerRDD[SpatialKey])] = {
-        println(s"buildPyramid: $zoom")
+        println(s":::buildPyramid: $zoom")
         if (zoom >= opts.minZoom) {
           rdd.cache()
           sink(rdd, zoom)
@@ -158,7 +168,7 @@ object IngestIDWPyramid {
           GeoTiff(layer.stitch, crs).write(to)
           HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"${to.split("/").last}"), sc.hadoopConfiguration)
         }
-        case _ => if(!opts.persist) layer.count
+        case _ => if(!opts.persist) println(s":::layer.count: ${layer.count}")
       }
 
       layer.unpersist(blocking = false)
