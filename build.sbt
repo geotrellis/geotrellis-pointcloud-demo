@@ -39,7 +39,11 @@ lazy val commonSettings = Seq(
 
 lazy val root =
   Project("root", file("."))
-    .aggregate(server, ingest)
+    .aggregate(macros, server, ingest)
+    .settings(commonSettings: _*)
+
+lazy val macros =
+  (project in file("macros"))
     .settings(commonSettings: _*)
 
 lazy val server =
@@ -48,4 +52,5 @@ lazy val server =
 
 lazy val ingest =
   (project in file("ingest"))
+    .dependsOn(macros)
     .settings(commonSettings: _*)    
