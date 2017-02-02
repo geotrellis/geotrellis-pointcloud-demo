@@ -21,14 +21,16 @@ lazy val commonSettings = Seq(
   parallelExecution in Test := false,
   javaOptions ++= Seq(s"-Djava.library.path=${Environment.ldLibraryPath}", "-Xmx10G"),
   test in assembly := {},
-  libraryDependencies += { scalaVersion ("org.scala-lang" % "scala-reflect" % _) }.value,
+  libraryDependencies ++= Seq(
+    { scalaVersion ("org.scala-lang" % "scala-reflect" % _) }.value,
+    "org.typelevel" %% "macro-compat" % "1.1.1"
+  ),
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
-  resolvers ++=
-    Seq(
-      "geosolutions" at "http://maven.geo-solutions.it/",
-      "osgeo" at "http://download.osgeo.org/webdav/geotools/"
-    ),
+  resolvers ++= Seq(
+    "geosolutions" at "http://maven.geo-solutions.it/",
+    "osgeo" at "http://download.osgeo.org/webdav/geotools/"
+  ),
   assemblyMergeStrategy in assembly := {
     case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
     case m if m.toLowerCase.matches("meta-inf.*\\.sf$") => MergeStrategy.discard

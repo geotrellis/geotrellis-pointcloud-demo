@@ -1,6 +1,6 @@
 package com.azavea.pointcloud.ingest.conf
 
-import com.azavea.annotations.GenParser
+import com.azavea.annotation.GenParser
 
 import geotrellis.raster.CellSize
 import geotrellis.vector.Extent
@@ -27,5 +27,5 @@ case class IngestConf(
 object IngestConf {
   implicit def stringToExtent(str: String): Extent = Extent.fromString(str)
   implicit def stringToCellSize(str: String): CellSize = CellSize.fromString(str)
-  implicit def liftStringToOption[T](str: String)(implicit ev: String => T): Option[T] = Some(str)
+  implicit def liftStringToOptionT[T](str: String)(implicit ev: String => T): Option[T] = Some(str)
 }

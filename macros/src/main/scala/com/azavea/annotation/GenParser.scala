@@ -1,4 +1,4 @@
-package com.azavea.annotations
+package com.azavea.annotation
 
 import scala.annotation.StaticAnnotation
 import scala.language.experimental.macros
@@ -8,16 +8,27 @@ class GenParser(cliName: String) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro GenParserImpl.impl
 }
 
+@macrocompat.bundle
 object GenParserImpl {
   def impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
 
     def isOptional(fieldType: Type): Boolean = fieldType <:< typeOf[Option[_]]
-    def isLiftedEqal[T: TypeTag](fieldType: Type): Boolean = fieldType =:= typeOf[T] || fieldType =:= typeOf[Option[T]]
+    def isLiftedOptEq[T: TypeTag](fieldType: Type): Boolean = fieldType =:= typeOf[T] || fieldType =:= typeOf[Option[T]]
+    def isPrimitive(fieldType: Type) =
+      isLiftedOptEq[Int](fieldType) ||
+      isLiftedOptEq[Long](fieldType) ||
+      isLiftedOptEq[Boolean](fieldType) ||
+      isLiftedOptEq[Byte](fieldType) ||
+      isLiftedOptEq[Char](fieldType) ||
+      isLiftedOptEq[Short](fieldType) ||
+      isLiftedOptEq[Float](fieldType) ||
+      isLiftedOptEq[Double](fieldType) ||
+      isLiftedOptEq[Symbol](fieldType)
 
     def extractAnnotationParameters(tree: Tree): Tree = tree match {
       case q"new $name( ..$params )" if params.length == 1 => params.head
-      case _ => throw new Exception("GenParser annotation must have only least one parameter.")
+      case _ => throw new Exception("GenParser annotation must have only one parameter.")
     }
 
     def extractCaseClassesParts(classDecl: ClassDef) = classDecl match {
@@ -43,25 +54,26 @@ object GenParserImpl {
         val (fieldName, fieldType, defaultValue) = extractTree(field)
 
         if(defaultValue.isEmpty)
-          throw new Exception("case class to generate patter should be with default values only.")
+          throw new Exception("Annotated case class should be with default values only.")
 
         def typeToString(fieldType: Type) = {
-          if(isOptional(fieldType)) s"$fieldType"
-          else s"non-empty $fieldType"
+          if(isPrimitive(fieldType)) {
+            if (isOptional(fieldType)) s"${fieldType.typeArgs.head}"
+            else s"non-empty $fieldType"
+          } else "non-empty String"
         }
 
-        def defaultValueToString(defaultValue: Tree) = {
-          if(defaultValue.isEmpty || isOptional(fieldType) && defaultValue != TypeName("None")) ""
+        def defaultValueToString(fieldType: Type, defaultValue: Tree) = {
+          if(defaultValue.isEmpty || isOptional(fieldType) && defaultValue != q"None") ""
+          else if(!isPrimitive(fieldType) && defaultValue.children.length > 1) s"[default: ${defaultValue.children.tail.mkString(",")}]"
           else s"[default: $defaultValue]"
         }
 
         s"""
             |  --$fieldName <value>
-            |      $fieldName is a ${typeToString(fieldType)} property ${defaultValueToString(defaultValue)}
+            |      $fieldName is a ${typeToString(fieldType)} property ${defaultValueToString(fieldType, defaultValue)}
         """
       } mkString ""
-
-      println(cliName)
 
       s"""
          |$cliName
@@ -78,26 +90,24 @@ object GenParserImpl {
       val (_, className, fields: Seq[Tree], _, _) = extractCaseClassesParts(classDecl)
       val helpMessage = generateCliHelp(fields)
 
-      println(helpMessage)
-
       val default = cq"""Nil => opts"""
       val help = cq""""--help" :: tail => { println(help); sys.exit(1) }"""
       val noopt = cq"""option :: tail => { println(s"Unknown option $${option}"); println(help); sys.exit(1) }"""
 
       val cases = default +: fields.map { field =>
-        val (fieldName, fieldType, defaultValue) = extractTree(field)
+        val (fieldName, fieldType, _) = extractTree(field)
         val fn = s"--$fieldName"
 
         val additionalCast =
-          if(isLiftedEqal[Int](fieldType)) q"value.toInt"
-          else if(isLiftedEqal[Long](fieldType)) q"value.toLong"
-          else if (isLiftedEqal[Boolean](fieldType)) q"value.toBoolean"
-          else if (isLiftedEqal[Byte](fieldType)) q"value.toByte"
-          else if (isLiftedEqal[Char](fieldType)) q"value.toChar"
-          else if (isLiftedEqal[Short](fieldType)) q"value.toShort"
-          else if (isLiftedEqal[Float](fieldType)) q"value.toFloat"
-          else if (isLiftedEqal[Double](fieldType)) q"value.toDouble"
-          else if (isLiftedEqal[Symbol](fieldType)) q"value.toSymbol"
+          if(isLiftedOptEq[Int](fieldType)) q"value.toInt"
+          else if(isLiftedOptEq[Long](fieldType)) q"value.toLong"
+          else if (isLiftedOptEq[Boolean](fieldType)) q"value.toBoolean"
+          else if (isLiftedOptEq[Byte](fieldType)) q"value.toByte"
+          else if (isLiftedOptEq[Char](fieldType)) q"value.toChar"
+          else if (isLiftedOptEq[Short](fieldType)) q"value.toShort"
+          else if (isLiftedOptEq[Float](fieldType)) q"value.toFloat"
+          else if (isLiftedOptEq[Double](fieldType)) q"value.toDouble"
+          else if (isLiftedOptEq[Symbol](fieldType)) q"value.toSymbol"
           else q"value"
 
         if(isOptional(fieldType)) cq"""$fn :: value :: tail => nextOption(opts.copy($fieldName = Some(${additionalCast})), tail)"""
@@ -138,7 +148,7 @@ object GenParserImpl {
            ..$objDefs
          }
          """
-      case _ => c.abort(c.enclosingPosition, "Invalid annotation target: must be a case class")
+      case _ => c.abort(c.enclosingPosition, "Invalid annotation target: must be a case class.")
     }
 
     c.Expr[Any](result)

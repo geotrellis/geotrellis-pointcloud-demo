@@ -38,7 +38,7 @@ object IngestTINPyramid {
   }
 
   def main(args: Array[String]): Unit = {
-    val opts      = IngestConf.parse(args)
+    val opts: IngestConf = IngestConf.parse(args)
     println(s":::opts: ${opts}")
 
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"

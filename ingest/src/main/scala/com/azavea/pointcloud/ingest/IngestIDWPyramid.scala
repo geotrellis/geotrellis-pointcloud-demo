@@ -26,9 +26,8 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 object IngestIDWPyramid {
   def main(args: Array[String]): Unit = {
-    val opts      = IngestConf.parse(args)
+    val opts: IngestConf = IngestConf.parse(args)
     println(s":::opts: ${opts}")
-
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
 
     val conf = new SparkConf()

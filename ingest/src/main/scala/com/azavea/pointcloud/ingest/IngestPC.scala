@@ -25,7 +25,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 object IngestPC {
   def main(args: Array[String]): Unit = {
-    val opts      = IngestConf.parse(args)
+    val opts: IngestConf = IngestConf.parse(args)
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
 
     val conf = new SparkConf()
