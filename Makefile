@@ -42,6 +42,9 @@ load-hdfs:
 	aws emr ssh --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem" \
 	--command /home/hadoop/load-hdfs.sh
 
+load-local:
+	scripts/load-local.sh
+
 create-cluster:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
 --release-label emr-5.2.0 \
@@ -178,15 +181,27 @@ ssh:
 
 local-ingest-idw: ${POINTCLOUD_INGEST_ASSEMBLY}
 	spark-submit --name "IDW Ingest ${NAME}" --master "local[4]" --driver-memory 4G --class com.azavea.pointcloud.ingest.IngestIDWPyramid \
-	${POINTCLOUD_INGEST_ASSEMBLY}\
-	--inputPath ${POINTCLOUD_PATH}\
-	--inputCrs '+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs'
+	--conf spark.driver.extraJavaOptions="-Djava.library.path=/usr/local/lib" \
+	--conf spark.executor.extraJavaOptions="-Djava.library.path=/usr/local/lib" \
+	${POINTCLOUD_INGEST_ASSEMBLY} \
+	--inputPath ${LOCAL_POINTCLOUD_PATH} \
+	--catalogPath ${LOCAL_CATALOG} \
+	--inputCrs '+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs' \
+	--maxZoom 15
 
 local-ingest-tin: ${POINTCLOUD_INGEST_ASSEMBLY}
 	spark-submit --name "TIN Ingest ${NAME}" --master "local[4]" --driver-memory 4G --class com.azavea.pointcloud.ingest.IngestTINPyramid \
-	${POINTCLOUD_INGEST_ASSEMBLY}\
-	--inputPath ${POINTCLOUD_PATH}\
-	--inputCrs '+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs'
+	${POINTCLOUD_INGEST_ASSEMBLY} \
+	--inputPath ${POINTCLOUD_PATH} \
+	--catalogPath ${LOCAL_CATALOG} \
+	--inputCrs '+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs' \
+	--maxZoom 15
+
+local-webui-py3:
+	cd static; python -m http.server 8000
+
+local-webui-py2:
+	cd static; python -m SimpleHTTPServer 8000
 
 local-run-server: ${POINTCLOUD_SERVER_ASSEMBLY}
 	spark-submit --name "IDW Ingest ${NAME}" --master "local[4]" --driver-memory 4G --class com.azavea.server.Main \
