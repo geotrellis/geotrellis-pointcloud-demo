@@ -10,8 +10,8 @@
 # mkdir -p /tmp/SHCZO_Dec10
 # mkdir -p /tmp/SHCZO_Jul10
 
-wget -r --no-parent -P ./data https://cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/SHCZO_Dec10/ot_SH2_238500_4499000.laz
+wget -P ./data https://cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/JRB_10_Jul/ot_348000_3968000_1.laz
 
-mv ./data/cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/* ./data/ && rm -r ./data/cloud.sdsc.edu/
+# mv ./data/cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/* ./data/ && rm -r ./data/cloud.sdsc.edu/
 
 # hadoop fs -copyFromLocal /tmp/SHCZO* /data/test/
