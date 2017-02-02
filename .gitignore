@@ -23,6 +23,14 @@ build/
 *.iws
 *.idea
 
+# Emacs #
+
+.ensime
+\#*#
+*~
+.#*
+
+
 # Spring Bootstrap artifacts #
 
 dependency-reduced-pom.xml
@@ -44,3 +52,6 @@ last-step-id.txt
 scripts/upsert.json
 config-aws.mk
 logs
+
+# Local files #
+catalog/
