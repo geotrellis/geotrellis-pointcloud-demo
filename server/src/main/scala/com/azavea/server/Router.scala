@@ -158,233 +158,247 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
               complete {
                 readTileNeighbours(layerId, key) map { tileSeq =>
                   ContextCollection(tileSeq, md).hillshade(azimuth, altitude, zFactor, target)
-                    .find { _._1 == key }
+                    .find {
+                      _._1 == key
+                    }
                     .map(_._2)
-                    .map { DIMRender(_, layerId, colorRamp) }
+                    .map {
+                      DIMRender(_, layerId, colorRamp)
+                    }
                 }
               }
             }
           }
         } ~
-        pathPrefix("hillshade-buffered") {
-          pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-            parameters('colorRamp ? "blue-to-red", 'azimuth.as[Double] ? 315, 'altitude.as[Double] ? 45, 'zFactor.as[Double] ? 1, 'targetCell ? "all") { (colorRamp, azimuth, altitude, zFactor, targetCell) =>
-              val target = targetCell match {
-                case "nodata" => TargetCell.NoData
-                case "data" => TargetCell.Data
-                case _ => TargetCell.All
-              }
-              val layerId = LayerId(layerName, zoom)
-              val key = SpatialKey(x, y)
-              val keys = populateKeys(key)
-              val kb = keyToBounds(key)
-              val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+          pathPrefix("hillshade-buffered") {
+            pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
+              parameters('colorRamp ? "blue-to-red", 'azimuth.as[Double] ? 315, 'altitude.as[Double] ? 45, 'zFactor.as[Double] ? 1, 'targetCell ? "all") { (colorRamp, azimuth, altitude, zFactor, targetCell) =>
+                val target = targetCell match {
+                  case "nodata" => TargetCell.NoData
+                  case "data" => TargetCell.Data
+                  case _ => TargetCell.All
+                }
+                val layerId = LayerId(layerName, zoom)
+                val key = SpatialKey(x, y)
+                val keys = populateKeys(key)
+                val kb = keyToBounds(key)
+                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
 
-              complete {
-                readTileNeighbours(layerId, key) map { _.runOnSeq(key, md) { case (tile, bounds) =>
-                  Hillshade(tile, Square(1), bounds, md.cellSize, azimuth, altitude, zFactor, target)
-                } } map { DIMRender(_, layerId, colorRamp) }
-              }
-            }
-          }
-        } ~
-        pathPrefix("hillshade-rdd") {
-          pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-            parameters('colorRamp ? "blue-to-red", 'azimuth.as[Double] ? 315, 'altitude.as[Double] ? 45, 'zFactor.as[Double] ? 1, 'targetCell ? "all") { (colorRamp, azimuth, altitude, zFactor, targetCell) =>
-              val target = targetCell match {
-                case "nodata" => TargetCell.NoData
-                case "data" => TargetCell.Data
-                case _ => TargetCell.All
-              }
-              val layerId = LayerId(layerName, zoom)
-              val key = SpatialKey(x, y)
-              val keys = populateKeys(key)
-              val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
-
-              complete {
-                readTileNeighbours(layerId, key) map { tileSeq =>
-                  ContextRDD(sc.parallelize(tileSeq), md).hillshade(azimuth, altitude, zFactor, target)
-                    .lookup(key)
-                    .headOption
-                    .map { DIMRender(_, layerId, colorRamp) }
+                complete {
+                  readTileNeighbours(layerId, key) map {
+                    _.runOnSeq(key, md) { case (tile, bounds) =>
+                      Hillshade(tile, Square(1), bounds, md.cellSize, azimuth, altitude, zFactor, target)
+                    }
+                  } map {
+                    DIMRender(_, layerId, colorRamp)
+                  }
                 }
               }
             }
-          }
-        }
-      } ~
-      pathPrefix("tiff") {
-        pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-          val layerId = LayerId(layerName, zoom)
-          val key = SpatialKey(x, y)
-          val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
-
-          complete {
-            Future {
-              val tileOpt =
-                try {
-                  Some(tileReader.reader[SpatialKey, Tile](layerId).read(key))
-                } catch {
-                  case e: ValueNotFoundError =>
-                    None
+          } ~
+          pathPrefix("hillshade-rdd") {
+            pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
+              parameters('colorRamp ? "blue-to-red", 'azimuth.as[Double] ? 315, 'altitude.as[Double] ? 45, 'zFactor.as[Double] ? 1, 'targetCell ? "all") { (colorRamp, azimuth, altitude, zFactor, targetCell) =>
+                val target = targetCell match {
+                  case "nodata" => TargetCell.NoData
+                  case "data" => TargetCell.Data
+                  case _ => TargetCell.All
                 }
-              tileOpt.map { tile =>
-                val extent = md.mapTransform(key)
-                val geotiff = GeoTiff(tile, extent, WebMercator)
-                val bytes = GeoTiffWriter.write(geotiff)
+                val layerId = LayerId(layerName, zoom)
+                val key = SpatialKey(x, y)
+                val keys = populateKeys(key)
+                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
 
-                HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/tiff`), bytes))
+                complete {
+                  readTileNeighbours(layerId, key) map { tileSeq =>
+                    ContextRDD(sc.parallelize(tileSeq), md).hillshade(azimuth, altitude, zFactor, target)
+                      .lookup(key)
+                      .headOption
+                      .map {
+                        DIMRender(_, layerId, colorRamp)
+                      }
+                  }
+                }
               }
             }
-          }
-        }
-      } ~
-      pathPrefix("png") {
-        pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-          parameters('colorRamp ? "blue-to-red") { colorRamp =>
-            val layerId = LayerId(layerName, zoom)
-            val key = SpatialKey(x, y)
-            val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+          } ~
+          pathPrefix("tiff") {
+            pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
+              val layerId = LayerId(layerName, zoom)
+              val key = SpatialKey(x, y)
+              val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
 
-            complete {
-              Future {
-                val tileOpt =
-                  try {
-                    Some(tileReader.reader[SpatialKey, Tile](layerId).read(key))
-                  } catch {
-                    case e: ValueNotFoundError =>
-                      None
+              complete {
+                Future {
+                  val tileOpt =
+                    try {
+                      Some(tileReader.reader[SpatialKey, Tile](layerId).read(key))
+                    } catch {
+                      case e: ValueNotFoundError =>
+                        None
+                    }
+                  tileOpt.map { tile =>
+                    val extent = md.mapTransform(key)
+                    val geotiff = GeoTiff(tile, extent, WebMercator)
+                    val bytes = GeoTiffWriter.write(geotiff)
+
+                    HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/tiff`), bytes))
                   }
-                tileOpt.map { DIMRender(_, layerId, colorRamp) }
+                }
               }
             }
-          }
-        }
-      } ~
-    pathPrefix("diff-tms") {
-      pathPrefix("png") {
-        pathPrefix(Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, zoom, x, y) =>
-          parameters('colorRamp ? "blue-to-red", 'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200") { (colorRamp, pbreaks) =>
-            val (layerId1, layerId2) = LayerId(layerName1, zoom) -> LayerId(layerName2, zoom)
-            val key = SpatialKey(x, y)
-            val (md1, md2) = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1) -> attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2)
+          } ~
+          pathPrefix("png") {
+            pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
+              parameters('colorRamp ? "blue-to-red") { colorRamp =>
+                val layerId = LayerId(layerName, zoom)
+                val key = SpatialKey(x, y)
+                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
 
-            complete {
-              Future {
-                val tileOpt =
-                  try {
-                    val tile1 = tileReader.reader[SpatialKey, Tile](layerId1).read(key)
-                    val tile2 = tileReader.reader[SpatialKey, Tile](layerId2).read(key)
+                println(key)
 
-                    val diff = tile1 - tile2
-
-                    Some(diff)
-                  } catch {
-                    case e: ValueNotFoundError =>
-                      None
+                complete {
+                  Future {
+                    val tileOpt =
+                      try {
+                        Some(tileReader.reader[SpatialKey, Tile](layerId).read(key))
+                      } catch {
+                        case e: ValueNotFoundError =>
+                          None
+                      }
+                    tileOpt.map {
+                      DIMRender(_, layerId, colorRamp)
+                    }
                   }
-                tileOpt.map { tile =>
-                  println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
+                }
+              }
+            }
+          } ~
+          pathPrefix("diff-tms") {
+            pathPrefix("png") {
+              pathPrefix(Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, zoom, x, y) =>
+                parameters('colorRamp ? "blue-to-red", 'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200") { (colorRamp, pbreaks) =>
+                  val (layerId1, layerId2) = LayerId(layerName1, zoom) -> LayerId(layerName2, zoom)
+                  val key = SpatialKey(x, y)
+                  val (md1, md2) = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1) -> attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2)
 
-                  println(s"pbreaks: ${pbreaks}")
+                  complete {
+                    Future {
+                      val tileOpt =
+                        try {
+                          val tile1 = tileReader.reader[SpatialKey, Tile](layerId1).read(key)
+                          val tile2 = tileReader.reader[SpatialKey, Tile](layerId2).read(key)
 
-                  /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
+                          val diff = tile1 - tile2
+
+                          Some(diff)
+                        } catch {
+                          case e: ValueNotFoundError =>
+                            None
+                        }
+                      tileOpt.map { tile =>
+                        println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
+
+                        println(s"pbreaks: ${pbreaks}")
+
+                        /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
                   val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
 
                   println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
 
-                  val breaks = pbreaks match {
-                    case "none" => {
-                      tile
-                        .histogramDouble
-                        .asInstanceOf[StreamingHistogram]
-                        .quantileBreaks(50)
+                        val breaks = pbreaks match {
+                          case "none" => {
+                            tile
+                              .histogramDouble
+                              .asInstanceOf[StreamingHistogram]
+                              .quantileBreaks(50)
+                          }
+                          case s => s.split(",").map(_.toDouble)
+                        }
+
+                        println(s"breaks: ${breaks.toList}")
+
+                        val ramp =
+                          ColorRampMap
+                            .getOrElse(colorRamp, ColorRamps.BlueToRed)
+                        val colorMap =
+                          ramp
+                            .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
+
+                        val bytes = tile.renderPng(colorMap)
+
+                        HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
+                      }
                     }
-                    case s => s.split(",").map(_.toDouble)
                   }
-
-                  println(s"breaks: ${breaks.toList}")
-
-                  val ramp =
-                    ColorRampMap
-                      .getOrElse(colorRamp, ColorRamps.BlueToRed)
-                  val colorMap =
-                    ramp
-                      .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
-
-                  val bytes = tile.renderPng(colorMap)
-
-                  HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
                 }
               }
             }
-          }
-        }
-      }
-    } ~
-    pathPrefix("diff2-tms") {
-      pathPrefix("png") {
-        pathPrefix(Segment / Segment / Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, layerName3, layerName4, zoom, x, y) =>
-          parameters('colorRamp ? "blue-to-red", 'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200") { (colorRamp, pbreaks) =>
-            val (layerId1, layerId2, layerId3, layerId4) = (LayerId(layerName1, zoom), LayerId(layerName2, zoom), LayerId(layerName3, zoom), LayerId(layerName4, zoom))
-            val key = SpatialKey(x, y)
-            val (md1, md2, md3, md4) = (attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId3), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId4))
+          } ~
+          pathPrefix("diff2-tms") {
+            pathPrefix("png") {
+              pathPrefix(Segment / Segment / Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, layerName3, layerName4, zoom, x, y) =>
+                parameters('colorRamp ? "blue-to-red", 'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200") { (colorRamp, pbreaks) =>
+                  val (layerId1, layerId2, layerId3, layerId4) = (LayerId(layerName1, zoom), LayerId(layerName2, zoom), LayerId(layerName3, zoom), LayerId(layerName4, zoom))
+                  val key = SpatialKey(x, y)
+                  val (md1, md2, md3, md4) = (attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId3), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId4))
 
-            complete {
-              Future {
-                val tileOpt =
-                  try {
-                    val tile1 = tileReader.reader[SpatialKey, Tile](layerId1).read(key)
-                    val tile2 = tileReader.reader[SpatialKey, Tile](layerId2).read(key)
-                    val tile3 = tileReader.reader[SpatialKey, Tile](layerId3).read(key)
-                    val tile4 = tileReader.reader[SpatialKey, Tile](layerId4).read(key)
+                  complete {
+                    Future {
+                      val tileOpt =
+                        try {
+                          val tile1 = tileReader.reader[SpatialKey, Tile](layerId1).read(key)
+                          val tile2 = tileReader.reader[SpatialKey, Tile](layerId2).read(key)
+                          val tile3 = tileReader.reader[SpatialKey, Tile](layerId3).read(key)
+                          val tile4 = tileReader.reader[SpatialKey, Tile](layerId4).read(key)
 
-                    val diff = (tile1 - tile2) - (tile3 - tile4)
+                          val diff = (tile1 - tile2) - (tile3 - tile4)
 
-                    Some(diff)
-                  } catch {
-                    case e: ValueNotFoundError =>
-                      None
-                  }
-                tileOpt.map { tile =>
-                  println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
+                          Some(diff)
+                        } catch {
+                          case e: ValueNotFoundError =>
+                            None
+                        }
+                      tileOpt.map { tile =>
+                        println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
 
-                  println(s"pbreaks: ${pbreaks}")
+                        println(s"pbreaks: ${pbreaks}")
 
-                  /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
+                        /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
                     val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
 
                     println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
 
-                  val breaks = pbreaks match {
-                    case "none" => {
-                      tile
-                        .histogramDouble
-                        .asInstanceOf[StreamingHistogram]
-                        .quantileBreaks(50)
+                        val breaks = pbreaks match {
+                          case "none" => {
+                            tile
+                              .histogramDouble
+                              .asInstanceOf[StreamingHistogram]
+                              .quantileBreaks(50)
+                          }
+                          case s => s.split(",").map(_.toDouble)
+                        }
+
+                        println(s"breaks: ${breaks.toList}")
+
+                        val ramp =
+                          ColorRampMap
+                            .getOrElse(colorRamp, ColorRamps.BlueToRed)
+                        val colorMap =
+                          ramp
+                            .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
+
+                        val bytes = tile.renderPng(colorMap)
+
+                        HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
+                      }
                     }
-                    case s => s.split(",").map(_.toDouble)
                   }
-
-                  println(s"breaks: ${breaks.toList}")
-
-                  val ramp =
-                    ColorRampMap
-                      .getOrElse(colorRamp, ColorRamps.BlueToRed)
-                  val colorMap =
-                    ramp
-                      .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
-
-                  val bytes = tile.renderPng(colorMap)
-
-                  HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
                 }
               }
             }
           }
-        }
       }
-    }
 
   def time[T](msg: String)(f: => T): (T, JsObject) = {
     val s = System.currentTimeMillis
