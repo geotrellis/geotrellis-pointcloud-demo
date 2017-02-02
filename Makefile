@@ -186,13 +186,22 @@ local-ingest-idw: ${POINTCLOUD_INGEST_ASSEMBLY}
 	${POINTCLOUD_INGEST_ASSEMBLY} \
 	--inputPath ${LOCAL_POINTCLOUD_PATH} \
 	--catalogPath ${LOCAL_CATALOG} \
-	--inputCrs '+proj=utm +zone=18 +datum=NAD83 +units=m +no_defs'
+	--inputCrs '+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs' \
+	--maxZoom 15
 
 local-ingest-tin: ${POINTCLOUD_INGEST_ASSEMBLY}
 	spark-submit --name "TIN Ingest ${NAME}" --master "local[4]" --driver-memory 4G --class com.azavea.pointcloud.ingest.IngestTINPyramid \
-	${POINTCLOUD_INGEST_ASSEMBLY}\
-	--inputPath ${POINTCLOUD_PATH}\
-	--inputCrs '+proj=utm +zone=18 +datum=NAD83 +units=m +no_defs'
+	${POINTCLOUD_INGEST_ASSEMBLY} \
+	--inputPath ${POINTCLOUD_PATH} \
+	--catalogPath ${LOCAL_CATALOG} \
+	--inputCrs '+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs' \
+	--maxZoom 15
+
+local-webui-py3:
+	cd static; python -m http.server 8000
+
+local-webui-py2:
+	cd static; python -m SimpleHTTPServer 8000
 
 local-run-server: ${POINTCLOUD_SERVER_ASSEMBLY}
 	spark-submit --name "IDW Ingest ${NAME}" --master "local[4]" --driver-memory 4G --class com.azavea.server.Main \

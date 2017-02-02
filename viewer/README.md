@@ -1,2 +1,0 @@
-# geotrellis-viewer
-
