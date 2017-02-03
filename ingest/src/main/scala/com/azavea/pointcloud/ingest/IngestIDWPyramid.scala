@@ -77,9 +77,9 @@ object IngestIDWPyramid {
       val kb = KeyBounds(layout.mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](FloatConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
 
-      val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
+      /*val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
 
-      println(s":::pointsCount: ${pointsCount}")
+      println(s":::pointsCount: ${pointsCount}")*/
 
       val tiled =
         CutPointCloud(
@@ -89,9 +89,9 @@ object IngestIDWPyramid {
           _.reduceByKey({ (p1, p2) => p1 union p2 }, opts.numPartitions)
         }
 
-      tiled.foreach { case (k, v) =>
+      /*tiled.foreach { case (k, v) =>
         println(s":::perTileDensity: ${k} -> ${v.length}")
-      }
+      }*/
 
       val tiles =
         PointCloudToDem(
@@ -165,6 +165,8 @@ object IngestIDWPyramid {
 
       opts.testOutput match {
         case Some(to) => {
+          println(s":::layer.count(): ${layer.count()}")
+
           GeoTiff(layer.stitch, crs).write(to)
           HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"${to.split("/").last}"), sc.hadoopConfiguration)
         }

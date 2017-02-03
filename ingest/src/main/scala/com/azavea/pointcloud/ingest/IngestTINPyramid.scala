@@ -90,9 +90,9 @@ object IngestTINPyramid {
       val kb = KeyBounds(mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](DoubleConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
 
-      val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
+      /*val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
 
-      println(s":::pointsCount: ${pointsCount}")
+      println(s":::pointsCount: ${pointsCount}")*/
 
       val cut: RDD[(SpatialKey, Array[Coordinate])] =
         source
@@ -124,6 +124,8 @@ object IngestTINPyramid {
           }
           .reduceByKey({ (p1, p2) => p1 ++ p2 }, opts.numPartitions)
           .filter { _._2.length > 2 }
+
+      println(s":::cut.count(): ${cut.count()}")
 
       cut.foreach { case (k, v) =>
         println(s":::perTileDensity: ${k} -> ${v.length}")
@@ -198,6 +200,7 @@ object IngestTINPyramid {
 
       opts.testOutput match {
         case Some(to) => {
+          println(s":::layer.count(): ${layer.count()}")
           GeoTiff(layer.stitch, crs).write(to)
           HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"${to.split("/").last}"), sc.hadoopConfiguration)
         }

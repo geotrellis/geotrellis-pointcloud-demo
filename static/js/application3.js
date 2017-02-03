@@ -44,7 +44,8 @@ var map = (function() {
 
   // m.setView([39.98786411111919,-105.6384462400773], 10);
   // m.setView([40.01528977696344, -105.3046817899056], 10);
-  m.setView([-21.76297918421384, 147.97245025634766], 10);
+  // m.setView([-21.76297918421384, 147.97245025634766], 10);
+  m.setView([35.84900423356369, -106.67767882042727], 10);
 
   selected.addTo(m);
 
@@ -104,7 +105,7 @@ var weightedOverlay = (function() {
 
     if(urlParameters['breaks'] != undefined) {
       WOLayer = new L.tileLayer(server +
-          'diff-tms/png/elevation2/elevation3/{z}/{x}/{y}?colorRamp={colorRamp}&breaks={breaks}', {
+          'tms/diff-tms/png/elevation2/elevation/{z}/{x}/{y}?colorRamp={colorRamp}&breaks={breaks}', {
         format: 'image/png',
         transparent: true,
         layer: "elevation3",
@@ -114,7 +115,7 @@ var weightedOverlay = (function() {
       });
     } else {
       WOLayer = new L.tileLayer(server +
-          'diff-tms/png/elevation2/elevation3/{z}/{x}/{y}?colorRamp={colorRamp}', {
+          'tms/diff-tms/png/elevation2/elevation/{z}/{x}/{y}?colorRamp={colorRamp}', {
         format: 'image/png',
         transparent: true,
         layer: "elevation3",
