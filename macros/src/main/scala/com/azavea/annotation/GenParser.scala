@@ -4,7 +4,7 @@ import scala.annotation.StaticAnnotation
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox
 
-class GenParser(cliName: String) extends StaticAnnotation {
+class GenParser(name: String, requiredFields: String*) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro GenParserImpl.impl
 }
 
@@ -26,9 +26,20 @@ object GenParserImpl {
       isLiftedOptEq[Double](fieldType) ||
       isLiftedOptEq[Symbol](fieldType)
 
-    def extractAnnotationParameters(tree: Tree): Tree = tree match {
-      case q"new $name( ..$params )" if params.length == 1 => params.head
-      case _ => throw new Exception("GenParser annotation must have only one parameter.")
+    def extractAnnotationParameters(tree: Tree): (Tree, Seq[String]) = tree match {
+      case q"new $name( ..$params )" if params.nonEmpty => {
+        val l = params.length
+        if(l == 1) params.head -> Seq()
+        else if(l > 1) {
+          val req = params(1).toString
+          if(req.contains("requiredFields =")) {
+            val fst = Seq(req.split("requiredFields =").mkString("").trim)
+            (params.head, (if (l == 2) fst else fst.toList ::: params.seq.slice(2, l).toList) map (s => s"--$s".replaceAll("\"", "")))
+          } else (params.head, Seq())
+        } else
+          throw new Exception("GenParser annotation must have only one parameter or additional annotated required fields.")
+      }
+      case _ => throw new Exception("GenParser annotation must have only one parameter or additional annotated required fields.")
     }
 
     def extractCaseClassesParts(classDecl: ClassDef) = classDecl match {
@@ -47,7 +58,7 @@ object GenParserImpl {
       (fieldName, fieldType, defaultValue)
     }
 
-    val cliName = extractAnnotationParameters(c.prefix.tree)
+    val (name, reqFields) = extractAnnotationParameters(c.prefix.tree)
 
     def generateCliHelp(fields: Seq[Tree]): String = {
       val options = fields.map { field =>
@@ -76,9 +87,9 @@ object GenParserImpl {
       } mkString ""
 
       s"""
-         |$cliName
+         |$name
          |
-         |Usage: $cliName [options]
+         |Usage: $name [options]
          |
          $options
          |  --help
@@ -119,7 +130,15 @@ object GenParserImpl {
          def nextOption(opts: $className, list: Seq[String]): $className = list.toList match {
            case ..$cases
          }
-         def parse(args: Seq[String]): $className = nextOption(new $className(), args)
+         def parse(args: Seq[String]): $className = {
+           val reqFields = Seq(..$reqFields)
+           if(reqFields.nonEmpty && reqFields.diff(args).nonEmpty) {
+             println(s"Required fields not passed: $${reqFields.diff(args)}")
+             sys.exit(1)
+           }
+
+           nextOption(new $className(), args)
+         }
          def apply(args: Seq[String]): $className = parse(args)
       """
     }
