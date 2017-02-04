@@ -13,7 +13,7 @@
 hadoop fs -mkdir -p /data/test/
 
 wget -r --no-parent -P /tmp/ -A '*.laz' https://cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/SHCZO_Dec10/
-wget -r --no-parent -P /tmp/ -A '*.laz' https://cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/SHCZO_Jul10/
+# wget -r --no-parent -P /tmp/ -A '*.laz' https://cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/SHCZO_Jul10/
 
 mv /tmp/cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/* /tmp/ && rm -r /tmp/cloud.sdsc.edu/
 

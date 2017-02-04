@@ -130,7 +130,7 @@ object IngestTINPyramid {
       }
 
       val tiles: RDD[(SpatialKey, Tile)] =
-        TinToDem.allStitch(cut, layout, extent)
+        TinToDem.withStitch(cut, layout, extent)
 
       val layer = ContextRDD(tiles, md)
 
