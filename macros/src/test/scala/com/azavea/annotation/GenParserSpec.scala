@@ -33,6 +33,7 @@ class GenParserSpec extends FunSpec with Matchers {
 
     it ("should generate nonempty help string") {
       TestConfig.help.nonEmpty shouldBe true
+      TestConfigReq.help.nonEmpty shouldBe true
     }
 
     it ("should parse with required args") {

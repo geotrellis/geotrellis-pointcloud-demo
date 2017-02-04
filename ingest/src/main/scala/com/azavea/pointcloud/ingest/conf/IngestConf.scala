@@ -5,7 +5,7 @@ import com.azavea.annotation.GenParser
 import geotrellis.raster.CellSize
 import geotrellis.vector.Extent
 
-@GenParser("geotrellis-pointcloud-ingest", requiredFields = "inputPath", "catalogPath")
+@GenParser("geotrellis-pointcloud-ingest")
 case class IngestConf(
   inputPath: String = "/data/test/",
   catalogPath: String = "/data/catalog",

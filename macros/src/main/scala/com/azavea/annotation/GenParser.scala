@@ -61,6 +61,7 @@ object GenParserImpl {
     val (name, requiredFields) = extractAnnotationParameters(c.prefix.tree)
 
     def generateHelp(fields: Seq[Tree]): String = {
+      val requiredFieldsStr = requiredFields.map { case Literal(Constant(s)) => s }
       val options = fields.map { field =>
         val (fieldName, fieldType, defaultValue) = extractTree(field)
 
@@ -80,9 +81,15 @@ object GenParserImpl {
           else s"[default: $defaultValue]"
         }
 
+        def requiredTypeToString = {
+          val TermName(fieldNameStr) = fieldName
+          if (requiredFieldsStr.contains(s"--$fieldNameStr")) s"required ${typeToString(fieldType)}"
+          else s"${typeToString(fieldType)}"
+        }
+
         s"""
             |  --$fieldName <value>
-            |      $fieldName is a ${typeToString(fieldType)} property ${defaultValueToString(fieldType, defaultValue)}
+            |      $fieldName is a ${requiredTypeToString} property ${defaultValueToString(fieldType, defaultValue)}
         """
       } mkString ""
 
