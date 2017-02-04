@@ -26,20 +26,20 @@ object GenParserImpl {
       isLiftedOptEq[Double](fieldType) ||
       isLiftedOptEq[Symbol](fieldType)
 
-    def extractAnnotationParameters(tree: Tree): (Tree, Seq[String]) = tree match {
+    def extractAnnotationParameters(tree: Tree): (Tree, Seq[Tree]) = tree match {
       case q"new $name( ..$params )" if params.nonEmpty => {
-        val l = params.length
-        if(l == 1) params.head -> Seq()
-        else if(l > 1) {
-          val req = params(1).toString
-          if(req.contains("requiredFields =")) {
-            val fst = Seq(req.split("requiredFields =").mkString("").trim)
-            (params.head, (if (l == 2) fst else fst.toList ::: params.seq.slice(2, l).toList) map (s => s"--$s".replaceAll("\"", "")))
-          } else (params.head, Seq())
-        } else
-          throw new Exception("GenParser annotation must have only one parameter or additional annotated required fields.")
+        params match {
+          case q"$s" :: Nil =>
+            s -> Seq()
+          case q"$s" :: q"requiredFields = ${Literal(Constant(ss))}" :: Nil =>
+            s -> Seq(Literal(Constant((s"--$ss"))))
+          case q"$s" :: q"requiredFields = ${Literal(Constant(ss))}" :: tail =>
+            (s, tail.map { case Literal(Constant(s: String)) => Literal(Constant((s"--$s"))) } :+ Literal(Constant((s"--$ss"))))
+          case _ =>
+            throw new Exception("GenParser annotation must have only one parameter or additional requiredFields parameter.")
+        }
       }
-      case _ => throw new Exception("GenParser annotation must have only one parameter or additional annotated required fields.")
+      case _ => throw new Exception("GenParser annotation must have only one parameter or additional requiredFields parameter.")
     }
 
     def extractCaseClassesParts(classDecl: ClassDef) = classDecl match {
@@ -58,9 +58,9 @@ object GenParserImpl {
       (fieldName, fieldType, defaultValue)
     }
 
-    val (name, reqFields) = extractAnnotationParameters(c.prefix.tree)
+    val (name, requiredFields) = extractAnnotationParameters(c.prefix.tree)
 
-    def generateCliHelp(fields: Seq[Tree]): String = {
+    def generateHelp(fields: Seq[Tree]): String = {
       val options = fields.map { field =>
         val (fieldName, fieldType, defaultValue) = extractTree(field)
 
@@ -99,7 +99,7 @@ object GenParserImpl {
 
     def modifiedDeclaration(classDecl: ClassDef) = {
       val (_, className, fields: Seq[Tree], _, _) = extractCaseClassesParts(classDecl)
-      val helpMessage = generateCliHelp(fields)
+      val helpMessage = generateHelp(fields)
 
       val default = cq"""Nil => opts"""
       val help = cq""""--help" :: tail => { println(help); sys.exit(1) }"""
@@ -131,9 +131,9 @@ object GenParserImpl {
            case ..$cases
          }
          def parse(args: Seq[String]): $className = {
-           val reqFields = Seq(..$reqFields)
-           if(reqFields.nonEmpty && reqFields.diff(args).nonEmpty) {
-             println(s"Required fields not passed: $${reqFields.diff(args)}")
+           val requiredFields = Seq(..$requiredFields)
+           if(requiredFields.nonEmpty && requiredFields.diff(args).nonEmpty) {
+             println(s"Required fields not passed: $${requiredFields.diff(args)}")
              sys.exit(1)
            }
 
