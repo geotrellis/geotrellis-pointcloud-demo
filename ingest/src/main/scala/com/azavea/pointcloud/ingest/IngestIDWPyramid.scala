@@ -1,10 +1,13 @@
 package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
+
 import geotrellis.pointcloud.pipeline._
 import geotrellis.pointcloud.spark._
 import geotrellis.pointcloud.spark.dem.{PointCloudToDem, PointToGrid}
+import geotrellis.pointcloud.spark.io.PointCloudHeader
 import geotrellis.pointcloud.spark.io.hadoop._
+import geotrellis.pointcloud.spark.io.s3._
 import geotrellis.pointcloud.spark.tiling.CutPointCloud
 import geotrellis.proj4.{CRS, LatLng}
 import geotrellis.raster.io._
@@ -15,12 +18,13 @@ import geotrellis.spark.io._
 import geotrellis.spark.io.hadoop._
 import geotrellis.spark.io.index.ZCurveKeyIndexMethod
 import geotrellis.spark.io.kryo.KryoRegistrator
+import geotrellis.spark.io.s3.S3LayerWriter
 import geotrellis.spark.pyramid.Pyramid
 import geotrellis.spark.tiling._
 import geotrellis.util._
 import geotrellis.vector._
+
 import org.apache.hadoop.fs.Path
-import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -41,14 +45,22 @@ object IngestIDWPyramid {
     implicit val sc = new SparkContext(conf)
 
     try {
-      val options = HadoopPointCloudRDD.Options.DEFAULT.copy(
-        pipeline =
-          Read("", opts.inputCrs) ~
-            ReprojectionFilter(opts.destCrs) ~
-            opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
-      )
+      val pipeline = Read("", opts.inputCrs) ~
+        ReprojectionFilter(opts.destCrs) ~
+        opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
 
-      val source = HadoopPointCloudRDD(new Path(opts.inputPath), options) //.cache()
+      val source =
+        if(opts.isS3Input)
+          HadoopPointCloudRDD(
+            new Path(opts.inputPath),
+            HadoopPointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
+          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache()
+        else
+          S3PointCloudRDD(
+            bucket = opts.S3InputPath._1,
+            prefix = opts.S3InputPath._2,
+            S3PointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
+          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache
 
       val (extent, crs) =
         source
@@ -77,9 +89,8 @@ object IngestIDWPyramid {
       val kb = KeyBounds(layout.mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](FloatConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
 
-      val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
-
-      println(s":::pointsCount: ${pointsCount}")
+      /*val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
+      println(s":::pointsCount: ${pointsCount}")*/
 
       val tiled =
         CutPointCloud(
@@ -89,9 +100,9 @@ object IngestIDWPyramid {
           _.reduceByKey({ (p1, p2) => p1 union p2 }, opts.numPartitions)
         }
 
-      tiled.foreach { case (k, v) =>
+      /*tiled.foreach { case (k, v) =>
         println(s":::perTileDensity: ${k} -> ${v.length}")
-      }
+      }*/
 
       val tiles =
         PointCloudToDem(
@@ -118,7 +129,10 @@ object IngestIDWPyramid {
       }
 
       if(opts.persist) {
-        val writer = HadoopLayerWriter(new Path(opts.catalogPath))
+        val writer =
+          if(opts.isS3Catalog) HadoopLayerWriter(new Path(opts.catalogPath))
+          else S3LayerWriter(opts.S3CatalogPath._1, opts.S3CatalogPath._2)
+
         val attributeStore = writer.attributeStore
 
         var savedHisto = false
@@ -165,6 +179,8 @@ object IngestIDWPyramid {
 
       opts.testOutput match {
         case Some(to) => {
+          println(s":::layer.count(): ${layer.count()}")
+
           GeoTiff(layer.stitch, crs).write(to)
           HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"${to.split("/").last}"), sc.hadoopConfiguration)
         }

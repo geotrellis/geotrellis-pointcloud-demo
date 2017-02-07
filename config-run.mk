@@ -7,3 +7,5 @@ export YARN_OVERHEAD := 1500
 export POINTCLOUD_PATH := /data/test/a
 export LOCAL_POINTCLOUD_PATH := file:///${PWD}/data/
 export LOCAL_CATALOG := file:///${PWD}/catalog/
+export S3_CATALOG := s3://geotrellis-test/pointcloud-demo/catalog
+export S3_POINTCLOUD_PATH := s3://geotrellis-test/pointcloud-demo

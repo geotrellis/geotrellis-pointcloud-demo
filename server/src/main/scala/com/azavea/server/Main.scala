@@ -2,7 +2,9 @@ package com.azavea.server
 
 import geotrellis.spark.io.kryo.KryoRegistrator
 import geotrellis.spark.io.hadoop._
+import geotrellis.spark.io.s3._
 import geotrellis.util._
+
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.event.Logging
 import akka.http.scaladsl.Http
@@ -35,9 +37,17 @@ object Main extends Router with Config {
 
   implicit val sc = new SparkContext(conf)
 
-  lazy val attributeStore = HadoopAttributeStore(attributeStorePath, sc.hadoopConfiguration)
-  lazy val tileReader = HadoopValueReader(attributeStore)
-  lazy val layerReader = HadoopLayerReader(attributeStore)
+  lazy val (attributeStore, tileReader, layerReader) = if(isS3Catalog) {
+    val as = S3AttributeStore(S3CatalogPath._1, S3CatalogPath._2)
+    val vr = new S3ValueReader(as)
+    val lr = S3LayerReader(as)
+    (as, vr, lr)
+  } else {
+    val as = HadoopAttributeStore(catalogPath, sc.hadoopConfiguration)
+    val vr = HadoopValueReader(as)
+    val lr = HadoopLayerReader(as)
+    (as, vr, lr)
+  }
 
   def main(args: Array[String]): Unit = {
     Http().bindAndHandle(routes, httpConfig.interface, httpConfig.port)

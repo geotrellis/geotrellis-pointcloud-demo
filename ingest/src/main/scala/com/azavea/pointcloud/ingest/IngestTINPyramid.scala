@@ -1,6 +1,7 @@
 package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
+
 import geotrellis.pointcloud.pipeline._
 import geotrellis.pointcloud.spark.io.hadoop._
 import geotrellis.pointcloud.spark.triangulation._
@@ -16,6 +17,10 @@ import geotrellis.spark.pyramid.Pyramid
 import geotrellis.spark.tiling._
 import geotrellis.util._
 import geotrellis.proj4.{CRS, LatLng}
+import geotrellis.pointcloud.spark.io.PointCloudHeader
+import geotrellis.pointcloud.spark.io.s3.S3PointCloudRDD
+import geotrellis.spark.io.s3.S3LayerWriter
+
 import com.vividsolutions.jts.geom.Coordinate
 import org.apache.hadoop.fs.Path
 import org.apache.spark.rdd.RDD
@@ -53,14 +58,22 @@ object IngestTINPyramid {
     implicit val sc = new SparkContext(conf)
 
     try {
-      val options = HadoopPointCloudRDD.Options.DEFAULT.copy(
-        pipeline =
-          Read("", opts.inputCrs) ~
-            ReprojectionFilter(opts.destCrs) ~
-            opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
-      )
+      val pipeline = Read("", opts.inputCrs) ~
+        ReprojectionFilter(opts.destCrs) ~
+        opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
 
-      val source = HadoopPointCloudRDD(new Path(opts.inputPath), options).cache()
+      val source =
+        if(opts.isS3Input)
+          HadoopPointCloudRDD(
+            new Path(opts.inputPath),
+            HadoopPointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
+          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache()
+        else
+          S3PointCloudRDD(
+            bucket = opts.S3InputPath._1,
+            prefix = opts.S3InputPath._2,
+            S3PointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
+          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache
 
       val (extent, crs) =
         source
@@ -75,7 +88,7 @@ object IngestTINPyramid {
           case _ =>  if (crs.epsgCode != targetCrs.epsgCode) extent.reproject(crs, targetCrs) else extent
         }
 
-      println(s":::targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
+      // println(s":::targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
 
       val layoutScheme = if (opts.pyramid || opts.zoomed) ZoomedLayoutScheme(targetCrs) else FloatingLayoutScheme(512)
 
@@ -90,9 +103,8 @@ object IngestTINPyramid {
       val kb = KeyBounds(mapTransform(targetExtent))
       val md = TileLayerMetadata[SpatialKey](DoubleConstantNoDataCellType, layout, targetExtent, targetCrs, kb)
 
-      val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
-
-      println(s":::pointsCount: ${pointsCount}")
+      /*val pointsCount = source.flatMap(_._2).map { _.length.toLong } reduce (_ + _)
+      println(s":::pointsCount: ${pointsCount}")*/
 
       val cut: RDD[(SpatialKey, Array[Coordinate])] =
         source
@@ -125,9 +137,11 @@ object IngestTINPyramid {
           .reduceByKey({ (p1, p2) => p1 ++ p2 }, opts.numPartitions)
           .filter { _._2.length > 2 }
 
-      cut.foreach { case (k, v) =>
+      // println(s":::cut.count(): ${cut.count()}")
+
+      /*cut.foreach { case (k, v) =>
         println(s":::perTileDensity: ${k} -> ${v.length}")
-      }
+      }*/
 
       val tiles: RDD[(SpatialKey, Tile)] =
         TinToDem.withStitch(cut, layout, extent)
@@ -151,7 +165,9 @@ object IngestTINPyramid {
       }
 
       if(opts.persist) {
-        val writer = HadoopLayerWriter(opts.catalogPath)
+        val writer =
+          if(opts.isS3Catalog) HadoopLayerWriter(new Path(opts.catalogPath))
+          else S3LayerWriter(opts.S3CatalogPath._1, opts.S3CatalogPath._2)
         val attributeStore = writer.attributeStore
 
         var savedHisto = false
@@ -198,6 +214,7 @@ object IngestTINPyramid {
 
       opts.testOutput match {
         case Some(to) => {
+          println(s":::layer.count(): ${layer.count()}")
           GeoTiff(layer.stitch, crs).write(to)
           HdfsUtils.copyPath(new Path(s"file://$to"), new Path(s"${to.split("/").last}"), sc.hadoopConfiguration)
         }
