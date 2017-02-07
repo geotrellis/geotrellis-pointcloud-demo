@@ -88,7 +88,7 @@ object IngestTINPyramid {
           case _ =>  if (crs.epsgCode != targetCrs.epsgCode) extent.reproject(crs, targetCrs) else extent
         }
 
-      println(s":::targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
+      // println(s":::targetExtent.reproject(targetCrs, LatLng): ${targetExtent.reproject(targetCrs, LatLng)}")
 
       val layoutScheme = if (opts.pyramid || opts.zoomed) ZoomedLayoutScheme(targetCrs) else FloatingLayoutScheme(512)
 
@@ -138,14 +138,14 @@ object IngestTINPyramid {
           .reduceByKey({ (p1, p2) => p1 ++ p2 }, opts.numPartitions)
           .filter { _._2.length > 2 }
 
-      println(s":::cut.count(): ${cut.count()}")
+      // println(s":::cut.count(): ${cut.count()}")
 
-      cut.foreach { case (k, v) =>
+      /*cut.foreach { case (k, v) =>
         println(s":::perTileDensity: ${k} -> ${v.length}")
-      }
+      }*/
 
       val tiles: RDD[(SpatialKey, Tile)] =
-        TinToDem.withStitch(cut, layout, extent)
+        TinToDem.allStitch(cut, layout, extent)
 
       val layer = ContextRDD(tiles, md)
 
