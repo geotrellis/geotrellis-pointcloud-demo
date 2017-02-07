@@ -95,10 +95,10 @@ var weightedOverlay = (function() {
     var geoJson = "";
 
     WOLayer = new L.tileLayer(server +
-        'tms/png/elevation/{z}/{x}/{y}?colorRamp={colorRamp}', {
+        'tms/png/{layer}/{z}/{x}/{y}?colorRamp={colorRamp}', {
       format: 'image/png',
       transparent: true,
-      layer: "elevation",
+      layer: "mar10",
       colorRamp: colorRamp,
       attribution: 'Azavea'
     });

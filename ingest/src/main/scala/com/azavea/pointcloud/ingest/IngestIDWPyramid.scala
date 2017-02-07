@@ -50,7 +50,7 @@ object IngestIDWPyramid {
         opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
 
       val source =
-        if(opts.isS3Input)
+        if(opts.nonS3Input)
           HadoopPointCloudRDD(
             new Path(opts.inputPath),
             HadoopPointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
@@ -130,7 +130,7 @@ object IngestIDWPyramid {
 
       if(opts.persist) {
         val writer =
-          if(opts.isS3Catalog) HadoopLayerWriter(new Path(opts.catalogPath))
+          if(opts.nonS3Catalog) HadoopLayerWriter(new Path(opts.catalogPath))
           else S3LayerWriter(opts.S3CatalogPath._1, opts.S3CatalogPath._2)
 
         val attributeStore = writer.attributeStore

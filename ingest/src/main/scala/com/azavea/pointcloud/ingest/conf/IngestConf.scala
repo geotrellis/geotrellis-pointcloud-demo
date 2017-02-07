@@ -29,10 +29,14 @@ object IngestConf {
       true
     } catch { case _: Exception => false }
 
+    lazy val nonS3Input = !isS3Input
+
     lazy val isS3Catalog = try {
       val S3InputFormat.S3UrlRx(_, _, _, _) = catalogPath
       true
     } catch { case _: Exception => false }
+
+    lazy val nonS3Catalog = !isS3Catalog
 
     lazy val S3InputPath = {
       val S3InputFormat.S3UrlRx(_, _, bucket, prefix) = inputPath

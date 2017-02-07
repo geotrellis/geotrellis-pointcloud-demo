@@ -39,6 +39,7 @@ object Main extends Router with Config {
 
   lazy val (attributeStore, tileReader, layerReader) = if(isS3Catalog) {
     val as = S3AttributeStore(S3CatalogPath._1, S3CatalogPath._2)
+    println(s"as.layerIds: ${as.layerIds}")
     val vr = new S3ValueReader(as)
     val lr = S3LayerReader(as)
     (as, vr, lr)
@@ -48,6 +49,9 @@ object Main extends Router with Config {
     val lr = HadoopLayerReader(as)
     (as, vr, lr)
   }
+
+  println(isS3Catalog)
+  println(S3CatalogPath)
 
   def main(args: Array[String]): Unit = {
     Http().bindAndHandle(routes, httpConfig.interface, httpConfig.port)

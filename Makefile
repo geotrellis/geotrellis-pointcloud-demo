@@ -80,7 +80,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --numPartitions,50000,\
 --persist,false,\
 --pyramid,false,\
---zoomed,false
+--zoomed,false\
 ] | cut -f2 | tee last-step-id.txt
 
 ingest-tin:
