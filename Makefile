@@ -83,9 +83,57 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --zoomed,false\
 ] | cut -f2 | tee last-step-id.txt
 
-ingest-tin:
+ingest-idw-jul10:
 	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
 --steps Type=CUSTOM_JAR,Name="IngestIDWPyramid",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestIDWPyramid,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.driver.maxResultSize=3g,\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Jul_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,jul10idw,\
+--numPartitions,5000,\
+--persist,true,\
+--pyramid,true,\
+--zoomed,true\
+] | cut -f2 | tee last-step-id.txt
+
+ingest-idw-mar10:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestIDWPyramid",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestIDWPyramid,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.driver.maxResultSize=3g,\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,mar10idw,\
+--numPartitions,5000,\
+--persist,true,\
+--pyramid,true,\
+--zoomed,true\
+] | cut -f2 | tee last-step-id.txt
+
+ingest-tin:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestTINPyramid",Jar=command-runner.jar,Args=[\
 spark-submit,--master,yarn-cluster,\
 --class,com.azavea.pointcloud.ingest.IngestTINPyramid,\
 --driver-memory,${DRIVER_MEMORY},\
@@ -101,9 +149,55 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --maxValue,400\
 ] | cut -f2 | tee last-step-id.txt
 
+ingest-tin-jul10:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestTINPyramid",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestTINPyramid,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Jul_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,jul10tin,\
+--numPartitions,5000,\
+--persist,true,\
+--pyramid,true,\
+--zoomed,true\
+] | cut -f2 | tee last-step-id.txt
+
+ingest-tin-mar10:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestTINPyramid",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestTINPyramid,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,mar10idw,\
+--numPartitions,5000,\
+--persist,true,\
+--pyramid,true,\
+--zoomed,true\
+] | cut -f2 | tee last-step-id.txt
+
 ingest-tin-to-file:
 	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
---steps Type=CUSTOM_JAR,Name="IngestIDWPyramid",Jar=command-runner.jar,Args=[\
+--steps Type=CUSTOM_JAR,Name="IngestTINPyramid",Jar=command-runner.jar,Args=[\
 spark-submit,--master,yarn-cluster,\
 --class,com.azavea.pointcloud.ingest.IngestTINPyramid,\
 --driver-memory,${DRIVER_MEMORY},\
@@ -125,9 +219,9 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 
 ingest-pc:
 	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
---steps Type=CUSTOM_JAR,Name="IngestIDWPyramid",Jar=command-runner.jar,Args=[\
+--steps Type=CUSTOM_JAR,Name="IngestPC",Jar=command-runner.jar,Args=[\
 spark-submit,--master,yarn-cluster,\
---class,com.azavea.pointcloud.ingest.IngestIDWPyramid,\
+--class,com.azavea.pointcloud.ingest.IngestPC,\
 --driver-memory,${DRIVER_MEMORY},\
 --driver-cores,${DRIVER_CORES},\
 --executor-memory,${EXECUTOR_MEMORY},\
@@ -138,6 +232,46 @@ spark-submit,--master,yarn-cluster,\
 ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --inputPath,${POINTCLOUD_PATH},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs'\
+] | cut -f2 | tee last-step-id.txt
+
+ingest-pc-mar10:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestPC",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestPC,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,mar10pc,\
+--numPartitions,5000\
+] | cut -f2 | tee last-step-id.txt
+
+ingest-pc-jul10:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestPC",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestPC,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Jul_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,jul10pc,\
+--numPartitions,5000\
 ] | cut -f2 | tee last-step-id.txt
 
 run-server: ${POINTCLOUD_SERVER_ASSEMBLY}

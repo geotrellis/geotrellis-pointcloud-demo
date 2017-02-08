@@ -14,6 +14,7 @@ import geotrellis.pointcloud.spark.io.hadoop._
 import geotrellis.spark.io._
 import geotrellis.spark.io.hadoop._
 import geotrellis.spark.tiling.FloatingLayoutScheme
+import geotrellis.spark.mapalgebra._
 import geotrellis.spark.mapalgebra.focal._
 import geotrellis.spark.mapalgebra.focal.hillshade._
 import geotrellis.proj4._
@@ -44,7 +45,7 @@ import scala.reflect.ClassTag
 trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor {
   val conf: SparkConf
   val tileReader: ValueReader[LayerId]
-  val layerReader: LayerReader[LayerId]
+  val layerReader: FilteringLayerReader[LayerId]
   val attributeStore: AttributeStore
   val staticPath: String
 
@@ -139,12 +140,66 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
       getFromDirectory(staticPath)
     } ~
     pathPrefix("gt") {
-      path("colors")(complete(ColorRampMap.getJson))
+      path("colors")(complete(ColorRampMap.getJson)) ~
+      pathPrefix("stats") {
+        import spray.json._
+        import DefaultJsonProtocol._
+
+        pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
+          parameters('poly ? "") { poly =>
+            val layerId = LayerId(layerName, zoom)
+            val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+
+            val rawGeometry = try {
+              poly.parseJson.convertTo[Geometry]
+            } catch {
+              case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+            }
+
+            val geometry = rawGeometry match {
+              case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
+              case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
+              case _ => sys.error(s"BAD GEOMETRY")
+            }
+
+            val result =
+              layerReader
+                .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layerId)
+                .where(Intersects(geometry))
+                .result
+
+            val stats = result.polygonalHistogram(geometry).statistics()
+
+            complete {
+              Future {
+                stats.map { s =>
+                  JsObject(
+                    "mean" -> s.mean.toJson,
+                    "median" -> s.median.toJson,
+                    "mode" -> s.mode.toJson,
+                    "stddev" -> s.stddev.toJson,
+                    "zmax" -> s.zmax.toJson,
+                    "zmin" -> s.zmin.toJson,
+                    "dataCells" -> s.dataCells.toJson
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
     } ~
       pathPrefix("tms") {
         pathPrefix("hillshade") {
           pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-            parameters('colorRamp ? "blue-to-red", 'azimuth.as[Double] ? 315, 'altitude.as[Double] ? 45, 'zFactor.as[Double] ? 1, 'targetCell ? "all") { (colorRamp, azimuth, altitude, zFactor, targetCell) =>
+            parameters(
+              'colorRamp ? "blue-to-red",
+              'azimuth.as[Double] ? 315,
+              'altitude.as[Double] ? 45,
+              'zFactor.as[Double] ? 1,
+              'targetCell ? "all",
+              'poly ? ""
+            ) { (colorRamp, azimuth, altitude, zFactor, targetCell, poly) =>
               val target = targetCell match {
                 case "nodata" => TargetCell.NoData
                 case "data" => TargetCell.Data
@@ -154,6 +209,10 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
               val key = SpatialKey(x, y)
               val keys = populateKeys(key)
               val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+              val extent = md.mapTransform(key)
+              val polygon =
+                if(poly.isEmpty) None
+                else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
 
               complete {
                 readTileNeighbours(layerId, key) map { tileSeq =>
@@ -162,8 +221,8 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
                       _._1 == key
                     }
                     .map(_._2)
-                    .map {
-                      DIMRender(_, layerId, colorRamp)
+                    .map { tile =>
+                      DIMRender(polygon.fold(tile) { p => tile.mask(extent, p.geom) }, layerId, colorRamp)
                     }
                 }
               }
@@ -172,7 +231,14 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
         } ~
           pathPrefix("hillshade-buffered") {
             pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-              parameters('colorRamp ? "blue-to-red", 'azimuth.as[Double] ? 315, 'altitude.as[Double] ? 45, 'zFactor.as[Double] ? 1, 'targetCell ? "all") { (colorRamp, azimuth, altitude, zFactor, targetCell) =>
+              parameters(
+                'colorRamp ? "blue-to-red",
+                'azimuth.as[Double] ? 315,
+                'altitude.as[Double] ? 45,
+                'zFactor.as[Double] ? 1,
+                'targetCell ? "all",
+                'poly ? ""
+              ) { (colorRamp, azimuth, altitude, zFactor, targetCell, poly) =>
                 val target = targetCell match {
                   case "nodata" => TargetCell.NoData
                   case "data" => TargetCell.Data
@@ -183,14 +249,18 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
                 val keys = populateKeys(key)
                 val kb = keyToBounds(key)
                 val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+                val extent = md.mapTransform(key)
+                val polygon =
+                  if(poly.isEmpty) None
+                  else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
 
                 complete {
                   readTileNeighbours(layerId, key) map {
                     _.runOnSeq(key, md) { case (tile, bounds) =>
                       Hillshade(tile, Square(1), bounds, md.cellSize, azimuth, altitude, zFactor, target)
                     }
-                  } map {
-                    DIMRender(_, layerId, colorRamp)
+                  } map { tile =>
+                    DIMRender(polygon.fold(tile) { p => tile.mask(extent, p.geom) }, layerId, colorRamp)
                   }
                 }
               }
@@ -198,7 +268,14 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
           } ~
           pathPrefix("hillshade-rdd") {
             pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-              parameters('colorRamp ? "blue-to-red", 'azimuth.as[Double] ? 315, 'altitude.as[Double] ? 45, 'zFactor.as[Double] ? 1, 'targetCell ? "all") { (colorRamp, azimuth, altitude, zFactor, targetCell) =>
+              parameters(
+                'colorRamp ? "blue-to-red",
+                'azimuth.as[Double] ? 315,
+                'altitude.as[Double] ? 45,
+                'zFactor.as[Double] ? 1,
+                'targetCell ? "all",
+                'poly ? ""
+              ) { (colorRamp, azimuth, altitude, zFactor, targetCell, poly) =>
                 val target = targetCell match {
                   case "nodata" => TargetCell.NoData
                   case "data" => TargetCell.Data
@@ -208,14 +285,18 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
                 val key = SpatialKey(x, y)
                 val keys = populateKeys(key)
                 val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+                val extent = md.mapTransform(key)
+                val polygon =
+                  if(poly.isEmpty) None
+                  else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
 
                 complete {
                   readTileNeighbours(layerId, key) map { tileSeq =>
                     ContextRDD(sc.parallelize(tileSeq), md).hillshade(azimuth, altitude, zFactor, target)
                       .lookup(key)
                       .headOption
-                      .map {
-                        DIMRender(_, layerId, colorRamp)
+                      .map { tile =>
+                        DIMRender(polygon.fold(tile) { p => tile.mask(extent, p.geom) }, layerId, colorRamp)
                       }
                   }
                 }
@@ -250,12 +331,14 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
           } ~
           pathPrefix("png") {
             pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-              parameters('colorRamp ? "blue-to-red") { colorRamp =>
+              parameters('colorRamp ? "blue-to-red", 'poly ? "") { (colorRamp, poly) =>
                 val layerId = LayerId(layerName, zoom)
                 val key = SpatialKey(x, y)
                 val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
-
-                println(key)
+                val extent = md.mapTransform(key)
+                val polygon =
+                  if(poly.isEmpty) None
+                  else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
 
                 complete {
                   Future {
@@ -266,8 +349,8 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
                         case e: ValueNotFoundError =>
                           None
                       }
-                    tileOpt.map {
-                      DIMRender(_, layerId, colorRamp)
+                    tileOpt.map { tile =>
+                      DIMRender(polygon.fold(tile) { p => tile.mask(extent, p.geom) }, layerId, colorRamp)
                     }
                   }
                 }
@@ -277,10 +360,18 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
           pathPrefix("diff-tms") {
             pathPrefix("png") {
               pathPrefix(Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, zoom, x, y) =>
-                parameters('colorRamp ? "green-to-red", 'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200") { (colorRamp, pbreaks) =>
+                parameters(
+                  'colorRamp ? "green-to-red",
+                  'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200",
+                  'poly ? ""
+                ) { (colorRamp, pbreaks, poly) =>
                   val (layerId1, layerId2) = LayerId(layerName1, zoom) -> LayerId(layerName2, zoom)
                   val key = SpatialKey(x, y)
                   val (md1, md2) = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1) -> attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2)
+                  val extent = md1.mapTransform(key)
+                  val polygon =
+                    if(poly.isEmpty) None
+                    else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md1.crs))
 
                   complete {
                     Future {
@@ -296,7 +387,8 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
                           case e: ValueNotFoundError =>
                             None
                         }
-                      tileOpt.map { tile =>
+                      tileOpt.map { t =>
+                        val tile = polygon.fold(t) { p => t.mask(extent, p.geom) }
                         println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
 
                         println(s"pbreaks: ${pbreaks}")
@@ -339,11 +431,19 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
           pathPrefix("diff2-tms") {
             pathPrefix("png") {
               pathPrefix(Segment / Segment / Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, layerName3, layerName4, zoom, x, y) =>
-                parameters('colorRamp ? "green-to-red", 'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200") { (colorRamp, pbreaks) =>
+                parameters(
+                  'colorRamp ? "green-to-red",
+                  'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200",
+                  'poly ? ""
+                ) { (colorRamp, pbreaks, poly) =>
 
                   val (layerId1, layerId2, layerId3, layerId4) = (LayerId(layerName1, zoom), LayerId(layerName2, zoom), LayerId(layerName3, zoom), LayerId(layerName4, zoom))
                   val key = SpatialKey(x, y)
                   val (md1, md2, md3, md4) = (attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId3), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId4))
+                  val extent = md1.mapTransform(key)
+                  val polygon =
+                    if(poly.isEmpty) None
+                    else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md1.crs))
 
                   complete {
                     Future {
@@ -361,7 +461,8 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
                           case e: ValueNotFoundError =>
                             None
                         }
-                      tileOpt.map { tile =>
+                      tileOpt.map { t =>
+                        val tile = polygon.fold(t) { p => t.mask(extent, p.geom) }
                         println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
 
                         println(s"pbreaks: ${pbreaks}")
