@@ -63,11 +63,10 @@ make
 sudo make install
 
 # Compile/install PDAL
-echo "CLONING PDAL AT 4a4be077d50781a7c38bfd1d866a619df095c79b"
 cd /mnt
-git clone https://github.com/pomadchin/PDAL.git pdal
+git clone https://github.com/PDAL/PDAL.git pdal
 cd pdal
-git checkout feature/pdal-jni
+git checkout -f 1.4-maintenance
 cmake . -DWITH_PDAL_JNI=ON -DWITH_APPS=ON -DWITH_LAZPERF=ON -DWITH_LASZIP=ON -DCMAKE_BUILD_TYPE=Release
 make -j4
 sudo make install

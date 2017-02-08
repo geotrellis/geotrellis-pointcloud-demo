@@ -100,7 +100,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Jul_subset/,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
---layerName,jul10idw,
+--layerName,jul10idw,\
 --numPartitions,5000,\
 --persist,true,\
 --pyramid,true,\
@@ -124,7 +124,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
---layerName,mar10idw,
+--layerName,mar10idw,\
 --numPartitions,5000,\
 --persist,true,\
 --pyramid,true,\
@@ -165,7 +165,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Jul_subset/,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
---layerName,jul10tin,
+--layerName,jul10tin,\
 --numPartitions,5000,\
 --persist,true,\
 --pyramid,true,\
@@ -188,7 +188,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
---layerName,mar10idw,
+--layerName,mar10idw,\
 --numPartitions,5000,\
 --persist,true,\
 --pyramid,true,\
