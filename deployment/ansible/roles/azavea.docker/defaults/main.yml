@@ -1,0 +1,5 @@
+---
+docker_version: "1.11.*"
+docker_py_version: "1.8.1"
+docker_options: ""
+docker_keyserver: "hkp://p80.pool.sks-keyservers.net:80"

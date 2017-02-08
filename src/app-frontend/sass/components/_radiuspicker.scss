@@ -1,0 +1,43 @@
+.radiuspicker {
+  background-color: #666;
+  color: #fff;
+  text-align: center;
+  padding: 0.8rem 0 0.8rem;
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  @media screen and (max-width: 700px) {
+    position: static;
+    .radiuspicker-title {
+      display: none;
+    }
+  }
+}
+
+.radiuspicker-title {
+  font-size: $font-size-base;
+  color: #fff;
+  margin-right: 2rem;
+}
+
+.radiuspicker-label {
+  display: inline-block;
+  margin-right: 4px;
+  border-radius: 100px;
+  cursor: pointer;
+  padding: 2px 7px;
+}
+
+.radiuspicker-option {
+  input {
+    display: none;
+  }
+  input:checked {
+    & + .radiuspicker-label {
+      cursor: default;
+      background-color: $brand-primary;
+    }
+  }
+}
+

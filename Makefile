@@ -2,8 +2,8 @@ include config-aws.mk # Vars related to AWS credentials and services used
 include config-emr.mk # Vars related to type and size of EMR cluster
 include config-run.mk # Vars related to ingest step and spark parameters
 
-POINTCLOUD_INGEST_ASSEMBLY := ingest/target/scala-2.11/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar
-POINTCLOUD_SERVER_ASSEMBLY := server/target/scala-2.11/pointcloud-server-assembly-0.1.0-SNAPHOST.jar
+POINTCLOUD_INGEST_ASSEMBLY := src/app-backend/ingest/target/scala-2.11/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar
+POINTCLOUD_SERVER_ASSEMBLY := src/app-backend/server/target/scala-2.11/pointcloud-server-assembly-0.1.0-SNAPHOST.jar
 SCRIPT_RUNNER := s3://elasticmapreduce/libs/script-runner/script-runner.jar
 STATIC := ./static
 
@@ -23,16 +23,16 @@ endif
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
-${POINTCLOUD_INGEST_ASSEMBLY}: $(call rwildcard, ingest/src, *.scala) build.sbt
-	./sbt ingest/assembly -no-colors
+${POINTCLOUD_INGEST_ASSEMBLY}: $(call rwildcard, src/app-backend/ingest/src, *.scala) src/app-backend/build.sbt
+	cd src/app-backend && ./sbt ingest/assembly -no-colors
 	@touch -m ${POINTCLOUD_INGEST_ASSEMBLY}
 
-${POINTCLOUD_SERVER_ASSEMBLY}: $(call rwildcard, server/src, *.scala) build.sbt
-	./sbt server/assembly -no-colors
+${POINTCLOUD_SERVER_ASSEMBLY}: $(call rwildcard, src/app-backend/server/src, *.scala) build.sbt
+	cd src/app-backend && ./sbt server/assembly -no-colors
 	@touch -m ${POINTCLOUD_SERVER_ASSEMBLY}
 
-upload-code: ${POINTCLOUD_INGEST_ASSEMBLY} ${POINTCLOUD_SERVER_ASSEMBLY} scripts/emr/*
-	@aws s3 cp scripts/emr/bootstrap-pdal.sh ${S3_URI}/
+upload-code: ${POINTCLOUD_INGEST_ASSEMBLY} ${POINTCLOUD_SERVER_ASSEMBLY} deployment/emr/*
+	@aws s3 cp deployment/emr/bootstrap-pdal.sh ${S3_URI}/
 	@aws s3 cp ${POINTCLOUD_INGEST_ASSEMBLY} ${S3_URI}/
 	@aws s3 cp ${POINTCLOUD_SERVER_ASSEMBLY} ${S3_URI}/
 
@@ -189,8 +189,10 @@ local-ingest-idw: ${POINTCLOUD_INGEST_ASSEMBLY}
 
 local-ingest-tin: ${POINTCLOUD_INGEST_ASSEMBLY}
 	spark-submit --name "TIN Ingest ${NAME}" --master "local[4]" --driver-memory 4G --class com.azavea.pointcloud.ingest.IngestTINPyramid \
+	--conf spark.driver.extraJavaOptions="-Djava.library.path=/usr/local/lib" \
+	--conf spark.executor.extraJavaOptions="-Djava.library.path=/usr/local/lib" \
 	${POINTCLOUD_INGEST_ASSEMBLY} \
-	--inputPath ${POINTCLOUD_PATH} \
+	--inputPath ${LOCAL_POINTCLOUD_PATH} \
 	--catalogPath ${LOCAL_CATALOG} \
 	--inputCrs '+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs'
 
@@ -203,30 +205,6 @@ local-webui-py2:
 local-run-server: ${POINTCLOUD_SERVER_ASSEMBLY}
 	spark-submit --name "IDW Ingest ${NAME}" --master "local[4]" --driver-memory 4G --class com.azavea.server.Main \
 	${POINTCLOUD_SERVER_ASSEMBLY}
-
-define UPSERT_BODY
-{
-  "Changes": [{
-    "Action": "UPSERT",
-    "ResourceRecordSet": {
-      "Name": "${1}",
-      "Type": "CNAME",
-      "TTL": 300,
-      "ResourceRecords": [{
-        "Value": "${2}"
-      }]
-    }
-  }]
-}
-endef
-
-update-route53: VALUE=$(shell aws emr describe-cluster --output text --cluster-id $(CLUSTER_ID) | egrep "^CLUSTER" | cut -f5)
-update-route53: export UPSERT=$(call UPSERT_BODY,${ROUTE53_RECORD},${VALUE})
-update-route53:
-	@tee scripts/upsert.json <<< "$$UPSERT"
-	aws route53 change-resource-record-sets \
---hosted-zone-id ${HOSTED_ZONE} \
---change-batch "file://$(CURDIR)/scripts/upsert.json"
 
 get-logs:
 	@aws emr ssh --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" \
