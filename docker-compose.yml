@@ -1,0 +1,25 @@
+version: '2'
+services:
+  app:
+    image: node:6.9-slim
+    working_dir: /usr/src
+    ports:
+      - "8284:8284"
+    volumes:
+        - ./src/app-frontend:/usr/src
+        - ./dist:/usr/dist
+        # Ensure node_modules cache doesn't clash with other jobs on CI.
+        - /var/cache/pc-demo-node-modules:/usr/src/node_modules
+    command: npm run dev-server
+  server:
+    image: openjdk:8-jre
+    ports:
+      - "7070:7070"
+    volumes:
+        - ./src/app-backend/:/opt/app-backend/
+        - ./src/app-backend/.sbt:/root/.sbt
+        - /home/vagrant/.ivy2/:/root/.ivy2
+        - $HOME/.aws:/root/.aws:ro
+    working_dir: /opt/app-backend/
+    entrypoint: ./sbt
+    command: server/run

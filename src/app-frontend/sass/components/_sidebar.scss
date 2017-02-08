@@ -1,0 +1,151 @@
+.sidebar {
+  width: 34rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  & > .search-container {
+    position: relative;
+    & > .icon {
+      position: absolute;
+      left: 0.9rem;
+      top: 1.3rem;
+      color: $gray-3;
+
+    }
+    & > .search {
+      padding: 1.3rem 1.6rem 1.3rem 3.6rem;
+      border: 0;
+      outline: 0;
+      width: 100%;
+      color: $gray-5;
+    }
+  }
+  .results-header {
+    padding: 0 1rem;
+    background-color: #F5F5F3;
+    border: 1px solid #d7d7d7;
+    border-width: 1px 0 1px 0;
+    align-items: center;
+    display: flex;
+    height: 5.0rem;
+  }
+  .button-default {
+    background-color: #fff;
+    border: 1px solid #B2B2B2;
+    box-shadow: 0 2px 2px rgba(16, 22, 26, 0.1);
+    background-clip: padding-box;
+    color: $gray-4;
+    border-radius: 3px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+  }
+}
+
+.correction {
+  border-top: 1px solid #ccc;
+  padding: 1rem;
+  text-align: center;
+}
+
+.search {
+  border: none;
+}
+
+.icon-search {
+  color: #999;
+}
+
+.results-count {
+  flex: 1;
+  text-align: right;
+}
+
+.results-selected {
+  padding: 2.4rem 1rem;
+  & > .result {
+    padding-bottom: 1.6rem;
+    .result-marker {
+      border-color: #aaa;
+    }
+  }
+  & > .result.selected {
+    .result-marker {
+      border-color: #F5D925;
+    }
+  }
+}
+
+.results-header {
+  @include clearfix;
+}
+
+.results-body {
+
+}
+
+.result {
+  @include clearfix;
+}
+
+.results {
+  flex: 1;
+}
+
+.result-date-wrapper {
+  float: left;
+  width: 22%;
+  position: relative;
+}
+
+.results-body {
+  .result {
+    &:last-child {
+      .result-text-wrapper {
+        &:after {
+          height: calc(100% - 2.5rem);
+        }
+      }
+    }
+  }
+}
+
+.result-text-wrapper {
+  float: left;
+  width: 78%;
+  position: relative;
+  color: $gray-5;
+  &:after {
+    width: 0.3rem;
+    height: calc(100% - 0.3rem);
+    background-color: #ddd;
+    position: absolute;
+    left: -1.9rem;
+    content: "";
+    top: 2.0rem;
+  }
+}
+
+.result-year {
+  width: 20%;
+  color: #999;
+}
+
+.result-streetname {
+  &.searchterm {
+    font-weight: $heading-font-weight;
+  }
+}
+
+.result-marker {
+  border: 3px solid red;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 100%;
+  position: absolute;
+  left: 4.6rem;
+  top: 0.4rem;
+}
+
+.result-description {
+  color: #999;
+}

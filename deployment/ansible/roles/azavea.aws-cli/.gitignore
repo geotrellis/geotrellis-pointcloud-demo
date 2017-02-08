@@ -1,0 +1,10 @@
+.vagrant
+
+examples/roles/azavea.*
+
+# Molecule
+.molecule
+*.retry
+*__pycache__*
+*.cache
+*.log

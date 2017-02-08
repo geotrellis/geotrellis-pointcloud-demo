@@ -1,0 +1,26 @@
+.photos {
+  background-color: #999999;
+  height: 10rem;
+  justify-content: space-between;
+  align-items: center;
+  display: flex;
+  padding-left: 1rem;
+  flex-wrap: wrap;
+  padding-left: 1rem;
+  flex-wrap: wrap;
+  overflow: hidden;
+  padding-top: 0.5rem;
+}
+
+.photo {
+  box-shadow: 0 4px 4px rgba(16, 22, 26, 0.1);
+  background-clip: padding-box;
+  margin-right: 1rem;
+  margin-bottom: 1rem;
+  & > img {
+    border: 6px solid white;
+    max-height: 9rem;
+    display: inline-block;
+    margin-bottom: -6px;
+  }
+}
