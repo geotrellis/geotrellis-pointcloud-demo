@@ -10,11 +10,17 @@ target
 build/
 .gradle
 
+src/app-backend/.sbt
+
 # Eclipse Project Files #
 
 .classpath
 .project
 .settings
+
+# Vagrant
+
+.vagrant
 
 # IntelliJ IDEA Files #
 
@@ -56,3 +62,4 @@ logs
 # Local files #
 catalog/
 viewer
+viewer2

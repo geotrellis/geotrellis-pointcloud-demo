@@ -27,7 +27,8 @@ lazy val commonSettings = Seq(
   resolvers ++=
     Seq(
       "geosolutions" at "http://maven.geo-solutions.it/",
-      "osgeo" at "http://download.osgeo.org/webdav/geotools/"
+      "osgeo" at "http://download.osgeo.org/webdav/geotools/",
+      "LocationTech GeoTrellis Snapshots" at "https://repo.locationtech.org/content/repositories/geotrellis-snapshots"
     ),
   assemblyMergeStrategy in assembly := {
     case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
@@ -48,4 +49,4 @@ lazy val server =
 
 lazy val ingest =
   (project in file("ingest"))
-    .settings(commonSettings: _*)    
+    .settings(commonSettings: _*)

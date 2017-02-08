@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: Hector Castro
+  description: An Ansible role for installing Docker.
+  company: Azavea Inc.
+  license: Apache
+  min_ansible_version: 1.9.2
+  platforms:
+  - name: Ubuntu
+    versions:
+    - trusty
+  categories:
+  - development
+  - system
+dependencies:
+  - src: azavea.pip
+    version: 0.1.0
+    name: azavea.pip

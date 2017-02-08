@@ -1,7 +1,47 @@
 # GeoTrellis PointCloud Demo
 
-### This project build
- * `./sbt ingest/assembly && ./sbt server/assembly` 
+This is an application for demoing point cloud support in GeoTrellis applications.
+
+### Requirements
+
+* Vagrant 1.8+
+* VirtualBox 4.3+
+* Ansible 2.2+
+
+### Getting Started
+
+#### Quick setup
+
+Clone the project, `cd` into the directory, then run `./scripts/setup.sh` to create the Vagrant VM and then build the Docker container(s).
+
+`setup.sh` can also be used to restore the project to its initial state: it will re-provision the VM, then remove and rebuild the Docker container(s).
+
+Note: this will destroy the VM's existing Docker container before rebuilding it.
+
+#### Downloading test data
+
+`make load-local` will download the necessary data.
+
+#### Using Docker in the VM
+
+The other project scripts are meant to execute in the VM in the `/vagrant` directory. To run the container during development use the following commands:
+
+    vagrant up
+    vagrant ssh
+    ./scripts/server.sh
+
+### Scripts
+
+| Name | Description |
+| --- | --- |
+| `cibuild.sh` | Build the project for CI server __TODO__ |
+| `clean.sh` | Clean up unused Docker resources to free disk space. __TODO__ |
+| `console.sh` | Run `docker-compose exec app /bin/sh` __TODO__ |
+| `lint.sh` | Run ESLint __TODO__ |
+| `server.sh` | Run `docker-compose up` and start a server on port 8284 |
+| `setup.sh` | Bring up the VM, and then destroy and rebuild the Docker container |
+| `test.sh` | Run tests __TODO__ |
+| `update.sh` | Update the app container with `npm` dependencies __TODO__ |
 
 ## Makefile
 

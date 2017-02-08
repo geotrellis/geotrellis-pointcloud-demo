@@ -10,7 +10,8 @@
 # mkdir -p /tmp/SHCZO_Dec10
 # mkdir -p /tmp/SHCZO_Jul10
 
-wget -P ./data https://cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/JRB_10_Jul/ot_348000_3968000_1.laz
+mkdir -p ./data/raw | true
+wget -P ./data/raw https://cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/JRB_10_Jul/ot_348000_3968000_1.laz
 
 # mv ./data/cloud.sdsc.edu/v1/AUTH_opentopography/PC_Bulk/* ./data/ && rm -r ./data/cloud.sdsc.edu/
 
