@@ -98,7 +98,7 @@ var weightedOverlay = (function() {
         'tms/png/{layer}/{z}/{x}/{y}?colorRamp={colorRamp}', {
       format: 'image/png',
       transparent: true,
-      layer: "mar10",
+      layer: "mar10idw",
       colorRamp: colorRamp,
       attribution: 'Azavea'
     });

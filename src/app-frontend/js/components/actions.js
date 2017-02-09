@@ -14,6 +14,11 @@ import {
 
 import { censusApiQuery, transformData } from 'census';
 
+export const SET_TARGET_LAYER = 'SET_TARGET_LAYER';
+export const SET_TARGET_LAYER_OPACITY = 'SET_TARGET_LAYER_OPACITY';
+export const SET_DATA_SOURCE_TYPE = 'SET_DATA_SOURCE_TYPE';
+export const SET_RENDER_METHOD = 'SET_RENDER_METHOD';
+
 export const START_FETCH_CARTO = 'START_FETCH_CARTO';
 export const COMPLETE_FETCH_CARTO = 'COMPLETE_FETCH_CARTO';
 export const FAIL_FETCH_CARTO = 'FAIL_FETCH_CARTO';
@@ -28,12 +33,34 @@ export const CLEAR_HOVER_GEOM = 'CLEAR_HOVER_GEOM';
 export const SET_HIGHLIGHTED_GEOM = 'SET_HIGHLIGHTED_GEOM';
 export const CLEAR_HIGHLIGHTED_GEOM = 'CLEAR_HIGHLIGHTED_GEOM';
 
-export function setHoverGeom(geom) {
+export function setTargetLayerName(layerName) {
     return {
-        type: SET_HOVER_GEOM,
-        payload: geom,
+        type: SET_TARGET_LAYER,
+        payload: layerName,
     };
 }
+
+export function setTargetLayerOpacity(value) {
+    return {
+        type: SET_TARGET_LAYER_OPACITY,
+        payload: value,
+    };
+}
+
+export function setDataSourceType(dsType) {
+    return {
+        type: SET_DATA_SOURCE_TYPE,
+        payload: dsType,
+    };
+}
+
+export function setRenderMethod(method) {
+    return {
+        type: SET_RENDER_METHOD,
+        payload: method,
+    };
+}
+
 
 export function clearHoverGeom() {
     return {

@@ -99,23 +99,12 @@
 .button-link {
   background-color: transparent;
   border: none;
-  color: $brand-secondary;
-  padding-left: 0;
-  padding-right: 0;
-  margin-top: 1rem;
 
   &:hover, &.hover,
   &:active, &.active,
   &:focus, &.focus,
   &:focus:active {
     box-shadow: none;
+    color: darken($brand-primary, 10%);
   }
-}
-
-.button-modal-close {
-  border: 0;
-  background: none;
-  position: absolute;
-  top: 0;
-  right: 0;
 }

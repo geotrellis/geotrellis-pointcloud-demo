@@ -6,18 +6,14 @@
   position: relative;
 }
 
-.flex-expand-column {
+.flex-expand {
+  background-color: #000;
+  color: #fff;
+  flex: 1;
   display: flex;
-  position: relative;
   flex-direction: column;
   overflow: hidden;
-}
-
-.flex-expand-row {
-  display: flex;
-  position: relative;
-  flex-direction: row;
-  overflow: hidden;
+  flex: 1;
 }
 
 .app-fullscreen {
@@ -31,6 +27,7 @@
   right: 0;
   left: 0;
 }
+
 
 /* * * *
  * Containers

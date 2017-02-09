@@ -31,11 +31,10 @@ $leaflet-control-attribution-on: false;
  * Colors
  *
  * * * */
-$brand-primary: #0089DE;
-$brand-secondary: #1ABC9C;
+$brand-primary: #20BEBF;
+$brand-secondary: #6972B5;
 $brand-danger: #DA4460;
 $brand-warning: #E7A938;
-$brand-dark: #34495E;
 
 $border-color: #ddd;
 
@@ -52,8 +51,6 @@ $gray-5: #222;
  * * * */
 
  $padding-unit: 1rem;
- $panel-smaller: 41.6666%;
- $panel-smaller-minimum: 36rem;
 
 
 /* * * *
@@ -83,22 +80,22 @@ $link-color: $brand-primary;
 
 $font-size-body: $font-size-base;
 $body-line-height: 1.5;
-$body-font-color: #666;
-$body-font-weight: 400;
-$body-font-family: "libre franklin", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+$body-font-color: #fff;
+$body-font-weight: 300;
+$body-font-family: "Libre Franklin", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
 
 $monospace-font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 
-$font-size-h1: 3.6rem;
-$font-size-h2: 2.4rem;
-$font-size-h3: 1.8rem;
-$font-size-h4: 1.5rem;
-$font-size-h5: 1.3rem;
-$font-size-h6: 1.3rem;
+$font-size-h1: $font-size-base * exponential($modular-scale, 5);
+$font-size-h2: $font-size-base * exponential($modular-scale, 4);
+$font-size-h3: $font-size-base * exponential($modular-scale, 3);
+$font-size-h4: $font-size-base * exponential($modular-scale, 2);
+$font-size-h5: $font-size-base;
+$font-size-h6: $font-size-base / $modular-scale;
 $heading-line-height: 1.2;
-$heading-font-color: #222;
+$heading-font-color: #fff;
 $heading-font-weight: 800;
-$heading-font-family: "libre franklin", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+$heading-font-family: "Libre Franklin", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
 $heading-margin-top: 3rem;
 $heading-margin-bottom: 1.4rem;
 

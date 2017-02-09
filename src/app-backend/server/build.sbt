@@ -13,3 +13,5 @@ libraryDependencies ++= Seq(
   "org.scalatest"    %% "scalatest"     % Version.scalaTest % "test",
   "com.iheart"       %% "ficus"         % Version.ficus
 )
+
+Revolver.settings
