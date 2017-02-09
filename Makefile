@@ -27,7 +27,7 @@ ${POINTCLOUD_INGEST_ASSEMBLY}: $(call rwildcard, src/app-backend/ingest/src, *.s
 	cd src/app-backend && ./sbt ingest/assembly -no-colors
 	@touch -m ${POINTCLOUD_INGEST_ASSEMBLY}
 
-${POINTCLOUD_SERVER_ASSEMBLY}: $(call rwildcard, src/app-backend/server/src, *.scala) build.sbt
+${POINTCLOUD_SERVER_ASSEMBLY}: $(call rwildcard, src/app-backend/server/src, *.scala) src/app-backend/build.sbt
 	cd src/app-backend && ./sbt server/assembly -no-colors
 	@touch -m ${POINTCLOUD_SERVER_ASSEMBLY}
 
@@ -158,7 +158,8 @@ spark-submit,--master,yarn-cluster,\
 --driver-cores,${DRIVER_CORES},\
 --executor-memory,${EXECUTOR_MEMORY},\
 --executor-cores,${EXECUTOR_CORES},\
---conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.dynamicAllocation.enabled=false,\
+--conf,spark.executor.instances=${EXECUTOR_COUNT},\
 --conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
 --conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
 ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
@@ -166,7 +167,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
 --layerName,jul10tin,\
---numPartitions,5000,\
+--numPartitions,50000,\
 --persist,true,\
 --pyramid,true,\
 --zoomed,true\
@@ -181,15 +182,16 @@ spark-submit,--master,yarn-cluster,\
 --driver-cores,${DRIVER_CORES},\
 --executor-memory,${EXECUTOR_MEMORY},\
 --executor-cores,${EXECUTOR_CORES},\
---conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.dynamicAllocation.enabled=false,\
+--conf,spark.executor.instances=${EXECUTOR_COUNT},\
 --conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
 --conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
 ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
---layerName,mar10idw,\
---numPartitions,5000,\
+--layerName,mar10tin,\
+--numPartitions,50000,\
 --persist,true,\
 --pyramid,true,\
 --zoomed,true\
