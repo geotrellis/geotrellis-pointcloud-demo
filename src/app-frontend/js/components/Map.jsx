@@ -68,7 +68,7 @@ export default class Map extends Component {
 
         let targetLayerPath = targetLayerName == "SNOW-ON" ? "mar10idw" : "jul10idw";
 
-        let renderMethodPath = renderMethod == "COLORRAMP" ? "png" : "hillshade";
+        let renderMethodPath = renderMethod == "COLORRAMP" ? "png" : "hillshade-buffered";
 
         let demLayerUrl = 'http://' + hostname + ':7070/tms/' + renderMethodPath + '/' + targetLayerPath + '/{z}/{x}/{y}?colorRamp={colorRamp}'
 
@@ -98,8 +98,12 @@ export default class Map extends Component {
                 ref={map => { this.map = map; }}
                 animate
             >
+                {/* <TileLayer
+                url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
+                /> */}
+
                 <TileLayer
-                    url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
+                    url="http://c.tiles.mapbox.com/v3/mapbox.world-light/{z}/{x}/{y}.png"
                 />
 
                 <TileLayer

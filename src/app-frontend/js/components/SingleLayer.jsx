@@ -99,7 +99,18 @@ export default class SingleLayer extends Component {
                 </div>
                 <div className="option-section">
                     <label htmlFor="" className="primary">DEM Creation Method</label>
-                    <div>(Tab: TIN, DEM)</div>
+                    <div class="pt-button-group pt-large pt-fill">
+                        <Button
+                            active={staticChecked}
+                            onClick={this.checkStatic}
+                            text="TIN"
+                        />
+                        <Button
+                            active={dynamicChecked}
+                            onClick={this.checkDynamic}
+                            text="IDW"
+                        />
+                    </div>
                 </div>
                 <div className="option-section">
                     <label htmlFor="" className="primary">Render Options</label>
