@@ -21,44 +21,75 @@ export default class Map extends Component {
     }
 
     componentDidMount() {
-        const leafletMap = this.map.leafletElement;
+        /* const leafletMap = this.map.leafletElement;
 
-        L.control.fullscreen({
-            position: 'topleft',
-            pseudoFullscreen: true,
-        }).addTo(leafletMap);
+         * L.control.fullscreen({
+         *     position: 'topLeft',
+         *     pseudoFullscreen: true,
+         * }).addTo(leafletMap);
 
-        leafletMap.on('fullscreenchange', this.adjustMap);
+         * leafletMap.on('fullscreenchange', this.adjustMap);*/
     }
 
-    componentWillReceiveProps({ center, radius }) {
+    componentWillReceiveProps({ center }) {
         const hasNewCenter = !isEqual(center, this.props.center);
-        const hasNewRadius = !isEqual(radius, this.props.radius);
 
-        if (hasNewCenter || hasNewRadius) {
+        if (hasNewCenter) {
             this.adjustMap();
         }
     }
 
     adjustMap() {
-        const { map, circleShape } = this;
-        if (map && circleShape) {
-            const { leafletElement: circle } = circleShape;
-            const { leafletElement: leafletMap } = map;
-            delay(() => { leafletMap.fitBounds(circle.getBounds()); }, 400);
+        const { map } = this;
+        if (map) {
+            // TODO: Center map.
+            /* const { leafletElement: circle } = circleShape;
+             * const { leafletElement: leafletMap } = map;
+             * delay(() => { leafletMap.fitBounds(circle.getBounds()); }, 400);*/
         }
     }
 
     render() {
-        const { center, zoom, radius, hoverGeom, highlightedGeom } = this.props;
-        const geojsonMarkerOptions = {
-            fillColor: '#1ABC9C',
-            radius: 7,
-            color: 'transparent',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 1,
-        };
+        const { targetLayerOpacity,
+                center,
+                zoom,
+                targetLayerName,
+                renderMethod } = this.props;
+
+        console.log("IN MAP: " + targetLayerName)
+        var layer = targetLayerName == "SNOW-ON" ? "mar10idw" : "jul10idw"
+        var colorRamp = "blue-to-red"
+
+        var hostname = window.location.hostname
+
+        /* var demLayerUrl = 'http://' + hostname + ':7070/tms/png/{layer}/{z}/{x}/{y}?colorRamp={colorRamp}'*/
+        console.log(demLayerUrl)
+        console.log(layer)
+
+        let targetLayerPath = targetLayerName == "SNOW-ON" ? "mar10idw" : "jul10idw";
+
+        let renderMethodPath = renderMethod == "COLORRAMP" ? "png" : "hillshade";
+
+        let demLayerUrl = 'http://' + hostname + ':7070/tms/' + renderMethodPath + '/' + targetLayerPath + '/{z}/{x}/{y}?colorRamp={colorRamp}'
+
+        let targetLayer = [<TileLayer
+                               key="targetLayer"
+                               url={demLayerUrl}
+                               colorRamp={colorRamp}
+                               opacity={targetLayerOpacity}
+                               maxZoom={19}
+                           />]
+        /* } else {
+         *     console.log("HERE")
+         *     var demLayerUrl = 'http://' + hostname + ':7070/tms/png/jul10idw/{z}/{x}/{y}?colorRamp={colorRamp}'
+         *     targetLayer = [<TileLayer
+         *                       key="targetLayer"
+         *                       url={demLayerUrl}
+         *                       colorRamp={colorRamp}
+         *                       opacity={targetLayerOpacity}
+         *                       maxZoom={19}
+         *                   />]
+         * }*/
 
         return (
             <LeafletMap
@@ -68,8 +99,22 @@ export default class Map extends Component {
                 animate
             >
                 <TileLayer
-                    url="http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+                    url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
                 />
+
+                <TileLayer
+                    url="http://tile.stamen.com/toner-labels/{z}/{x}/{y}@2x.png"
+                />
+
+              {targetLayer}
+                {/* <TileLayer
+                url={demLayerUrl}
+                layer="mar10idw"
+                colorRamp={colorRamp}
+                opacity={targetLayerOpacity}
+                maxZoom={19}
+                />
+                */}
             </LeafletMap>
         );
     }
@@ -77,8 +122,7 @@ export default class Map extends Component {
 
 Map.propTypes = {
     center: LocationTypeDef.isRequired,
-    radius: PropTypes.number.isRequired,
     zoom: PropTypes.number.isRequired,
-    hoverGeom: GeoJSONGeometryTypeDef,
-    highlightedGeom: GeoJSONGeometryTypeDef,
+    targetLayerName: PropTypes.string.isRequired,
+    renderMethod: PropTypes.string.isRequired,
 };

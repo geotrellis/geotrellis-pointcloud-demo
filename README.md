@@ -12,6 +12,9 @@ This is an application for demoing point cloud support in GeoTrellis application
 
 #### Quick setup
 
+Make sure you have a `geotrellis` profile in your aws-cli profiles, with keys that can access
+your data on S3.
+
 Clone the project, `cd` into the directory, then run `./scripts/setup.sh` to create the Vagrant VM and then build the Docker container(s).
 
 `setup.sh` can also be used to restore the project to its initial state: it will re-provision the VM, then remove and rebuild the Docker container(s).

@@ -20,6 +20,8 @@ services:
         - ./src/app-backend/.sbt:/root/.sbt
         - /home/vagrant/.ivy2/:/root/.ivy2
         - $HOME/.aws:/root/.aws:ro
+    environment:
+      - AWS_DEFUALT_PROFILE=geotrellis
     working_dir: /opt/app-backend/
     entrypoint: ./sbt
-    command: server/run
+    command: ~server/reStart

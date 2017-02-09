@@ -1,6 +1,6 @@
 export const isDevelopment = process.env.NODE_ENV === 'development';
 export const isProduction = process.env.NODE_ENV === 'production';
-export const defaultMapCenter = { lat: 39.9887, lng: -75.153 };
+export const defaultMapCenter = { lat: 35.84900423356369, lng: -106.67767882042727 };
 export const metersPerMile = 1609.344;
 export const civicInfoApiUrl =
     'https://www.googleapis.com/civicinfo/v2/representatives?address=';

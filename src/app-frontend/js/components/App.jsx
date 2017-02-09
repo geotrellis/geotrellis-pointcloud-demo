@@ -1,72 +1,38 @@
 import React, { Component, PropTypes } from 'react';
-/* import { Element, scrollSpy } from 'react-scroll';*/
 import { connect } from 'react-redux';
 import { browserHistory } from 'react-router';
 import { head, isEqual, isEmpty } from 'lodash';
+import { Slider, Button, Tabs, TabList, TabPanel, Tab } from "@blueprintjs/core";
 
 import ScrollButton from 'components/ScrollButton';
 import {
     GeoJSONGeometryTypeDef,
     QueryResultTypeDef,
 } from 'TypeDefs';
-/* import DemographicCards from './Card/Demographics';
- * import PoliticsCards from './Card/Politics';
- * import PointOfInterestCards from './Card/PointsOfInterest';*/
+
 import Map from './Map';
-/* import RadiusPicker from './RadiusPicker';*/
+import SingleLayer from './SingleLayer';
+import ChangeDetection from './ChangeDetection';
+
 import {
-    fetchAllData,
-    fetchCivicInfo,
-    fetchCensusData,
-    clearAllGeom,
+    setTargetLayerOpacity,
+    setDataSourceType
 } from './actions';
 
 /* import PGWLogo from '../../img/geotrellis-logo.png';*/
 
 class App extends Component {
-    componentDidMount() {
-        const { dispatch, address, radius } = this.props;
-        if (!address.text) {
-            browserHistory.push('/');
-            return;
-        }
-
-        dispatch(fetchAllData(address.latlng, radius));
-        dispatch(fetchCivicInfo(address.text));
-        scrollSpy.update();
-    }
-
-    componentWillReceiveProps({ dispatch, address, radius, censusTracts }) {
-        if (!isEqual(address.latlng, this.props.address.latlng)) {
-            dispatch(clearAllGeom());
-            dispatch(fetchAllData(address.latlng, radius));
-            dispatch(fetchCivicInfo(address.text));
-        } else if (radius !== this.props.radius) {
-            dispatch(fetchAllData(address.latlng, radius));
-        }
-
-        if (!isEmpty(censusTracts.data) &&
-            !isEqual(censusTracts, this.props.censusTracts)) {
-            dispatch(fetchCensusData('census', censusTracts));
-        }
+    constructor(props) {
+        super(props);
     }
 
     render() {
         const {
             dispatch,
-            address,
-            radius,
-            neighborhoods,
-            communityOrgs,
-            policeDistricts,
-            fireStations,
-            nec,
-            nac,
-            politics,
-            demographics,
-            hoverGeom,
-            highlightedGeom,
-            highlightedCard,
+            singleLayer,
+            changeDetection,
+            center,
+            zoom
         } = this.props;
 
         return (
@@ -74,51 +40,39 @@ class App extends Component {
                 <main>
                     <button className="button-analyze">Analyze</button>
                     <div className="sidebar options">
-                        <header className="tabs">
-                            <div className="tab active">Single Layer</div>
-                            <div className="tab">Change Detection</div>
-                        </header>
-                        <div className="content tab-content content-singlelayer active">
-                            <div className="option-section">
-                                <label htmlFor="" className="primary">Option 1</label>
-                                <div>(Tab: Static, Dynamic)</div>
-                                <label htmlFor="" className="secondary">Min &amp; Max Elevation</label>
-                                <div>(Slider)</div>
-                            </div>
-                            <div className="option-section">
-                                <label htmlFor="" className="primary">Option 2</label>
-                                <div>(Tab: TIN, DEM)</div>
-                            </div>
-                            <div className="option-section">
-                                <label htmlFor="" className="primary">Option 3</label>
-                                <div>(Tab: Hillshade, Color Ramp)</div>
-                                <label htmlFor="" className="secondary">Opacity</label>
-                                <div>(Slider)</div>
-                            </div>
-                            <div className="option-section">
-                                <label htmlFor="" className="primary">Option 4</label>
-                                <div>(Tab: Hillshade, Color Ramp)</div>
-                            </div>
-                        </div>
-                        <div className="content tab-content content-changedetection">
-                            <div className="option-section">
-                                <label htmlFor="" className="primary">Option 1</label>
-                                <div>(Tab: Static, Dynamic)</div>
-                                <label htmlFor="" className="secondary">Min &amp; Max Elevation</label>
-                                <div>(Slider)</div>
-                            </div>
-                            <div className="option-section">
-                                <label htmlFor="" className="primary">Option 2</label>
-                                <div>(Tab: TIN, DEM)</div>
-                            </div>
-                            <div className="option-section">
-                                <label htmlFor="" className="primary">Option 3</label>
-                                <div>(Tab: Hillshade, Color Ramp)</div>
-                                <label htmlFor="" className="secondary">Opacity</label>
-                                <div>(Slider)</div>
-                            </div>
-                        </div>
+                        <Tabs>
+                            <TabList className="main-tabs">
+                                <Tab>Single Layer</Tab>
+                                <Tab>Change Detection</Tab>
+                            </TabList>
+                            <TabPanel>
+                                <SingleLayer
+                                    dispatch={dispatch}
+                                    idwChecked={singleLayer.idwChecked}
+                                    tinChecked={singleLayer.tinChecked}
+                                    staticChecked={singleLayer.staticChecked}
+                                    dynamicChecked={singleLayer.dynamicChecked}
+                                    targetLayerOpacity={singleLayer.targetLayerOpacity}
+                                    colorRampChecked={singleLayer.colorRampChecked}
+                                    hillshadeChecked={singleLayer.hillshadeChecked}
+                                    snowOnChecked={singleLayer.snowOnChecked}
+                                    snowOffChecked={singleLayer.snowOffChecked}
+                                />
+                            </TabPanel>
+                            <TabPanel>
+                                <ChangeDetection
+                                    dispatch={dispatch}
+                                    idwChecked={changeDetection.idwChecked}
+                                    tinChecked={changeDetection.tinChecked}
+                                    staticChecked={changeDetection.staticChecked}
+                                    dynamicChecked={changeDetection.dynamicChecked}
+                                    targetLayerOpacity={changeDetection.targetLayerOpacity}
+                                />
+
+                            </TabPanel>
+                        </Tabs>
                     </div>
+
                     <div className="sidebar analyze active">
                         <header>
                             <div className="sidebar-heading">Analyze</div>
@@ -134,8 +88,12 @@ class App extends Component {
                         </div>
                         <div className="content">
                             <div className="analyze-description active">
-                                Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod
-                                tincidunt ut laoreet dolore.
+                                <p>Click on the "Draw" button to draw a polygon and
+                                    calculate statistics over that area.</p>
+                                <p>Click on the "Point" button to select a point
+                                    on the map and see statistics for that
+                                    location.</p>
+
                             </div>
                             <div className="analyze-result-wrapper active">
                                 <div className="analyze-result">
@@ -159,11 +117,11 @@ class App extends Component {
                     </div>
 
                     <Map className="map"
-                         center={address.latlng}
-                         radius={radius}
-                         zoom={12}
-                         hoverGeom={hoverGeom}
-                         highlightedGeom={highlightedGeom}
+                         targetLayerOpacity={singleLayer.targetLayerOpacity}
+                         center={center}
+                         zoom={11}
+                         targetLayerName={singleLayer.targetLayerName}
+                         renderMethod={singleLayer.renderMethod}
                     />
                 </main>
             </div>
