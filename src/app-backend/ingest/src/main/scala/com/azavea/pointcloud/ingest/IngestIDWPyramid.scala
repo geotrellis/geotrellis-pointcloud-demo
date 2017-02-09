@@ -2,7 +2,7 @@ package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
 
-import geotrellis.pointcloud.pipeline._
+import io.pdal.pipeline._
 import geotrellis.pointcloud.spark._
 import geotrellis.pointcloud.spark.dem.{PointCloudToDem, PointToGrid}
 import geotrellis.pointcloud.spark.io.PointCloudHeader

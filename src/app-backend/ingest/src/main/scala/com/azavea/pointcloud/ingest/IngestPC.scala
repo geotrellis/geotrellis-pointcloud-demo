@@ -3,7 +3,7 @@ package com.azavea.pointcloud.ingest
 import com.azavea.pointcloud.ingest.conf.IngestConf
 
 import io.pdal._
-import geotrellis.pointcloud.pipeline._
+import io.pdal.pipeline._
 import geotrellis.pointcloud.spark._
 import geotrellis.pointcloud.spark.io._
 import geotrellis.pointcloud.spark.io.hadoop._

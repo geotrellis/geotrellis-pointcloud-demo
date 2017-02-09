@@ -2,7 +2,7 @@ package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
 
-import geotrellis.pointcloud.pipeline._
+import io.pdal.pipeline._
 import geotrellis.pointcloud.spark.io.hadoop._
 import geotrellis.pointcloud.spark.triangulation._
 import geotrellis.raster.io._
@@ -144,17 +144,17 @@ object IngestTINPyramid {
       }*/
 
       val tiles: RDD[(SpatialKey, Tile)] =
-        TinToDem.withStitch(cut, layout, extent)
+        TinToDem.allStitch(cut, layout, extent)
 
       val layer = ContextRDD(tiles, md)
 
-      layer.cache()
+      //layer.cache()
 
       def buildPyramid(zoom: Int, rdd: TileLayerRDD[SpatialKey])
                       (sink: (TileLayerRDD[SpatialKey], Int) => Unit): List[(Int, TileLayerRDD[SpatialKey])] = {
         println(s":::buildPyramid: $zoom")
         if (zoom >= opts.minZoom) {
-          rdd.cache()
+          //rdd.cache()
           sink(rdd, zoom)
           val pyramidLevel@(nextZoom, nextRdd) = Pyramid.up(rdd, layoutScheme, zoom)
           pyramidLevel :: buildPyramid(nextZoom, nextRdd)(sink)
@@ -221,8 +221,8 @@ object IngestTINPyramid {
         case _ => if(!opts.persist) println(s":::layer.count: ${layer.count}")
       }
 
-      layer.unpersist(blocking = false)
-      source.unpersist(blocking = false)
+      // layer.unpersist(blocking = false)
+      // source.unpersist(blocking = false)
 
     } finally sc.stop()
   }
