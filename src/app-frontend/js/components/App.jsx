@@ -13,10 +13,15 @@ import {
 import Map from './Map';
 import SingleLayer from './SingleLayer';
 import ChangeDetection from './ChangeDetection';
+import Analysis from './Analysis';
 
 import {
     setTargetLayerOpacity,
-    setDataSourceType
+    setDataSourceType,
+    clearGeometries,
+    setPolygon,
+    setPoint,
+    setAnalysisOn
 } from './actions';
 
 /* import PGWLogo from '../../img/geotrellis-logo.png';*/
@@ -24,6 +29,31 @@ import {
 class App extends Component {
     constructor(props) {
         super(props);
+
+        this.onClearGeometries = this.onClearGeometries.bind(this);
+        this.onSetPolygon = this.onSetPolygon.bind(this);
+        this.onSetPoint = this.onSetPoint.bind(this);
+        this.onAnalyzeClicked = this.onAnalyzeClicked.bind(this);
+    }
+
+    onClearGeometries() {
+        const { dispatch } = this.props;
+        dispatch(clearGeometries());
+    }
+
+    onSetPolygon(polygon) {
+        const { dispatch } = this.props;
+        dispatch(setPolygon(polygon));
+    }
+
+    onSetPoint(point) {
+        const { dispatch } = this.props;
+        dispatch(setPoint(point));
+    }
+
+    onAnalyzeClicked() {
+        const { dispatch } = this.props;
+        dispatch(setAnalysisOn(true));
     }
 
     render() {
@@ -32,13 +62,14 @@ class App extends Component {
             singleLayer,
             changeDetection,
             center,
-            zoom
+            zoom,
+            analysis
         } = this.props;
 
         return (
             <div className="flex-expand-column height-100percent mode-detail pt-dark">
                 <main>
-                    <button className="button-analyze">Analyze</button>
+                    <button className="button-analyze" onClick={this.onAnalyzeClicked}>Analyze</button>
                     <div className="sidebar options">
                         <Tabs>
                             <TabList className="main-tabs">
@@ -73,45 +104,13 @@ class App extends Component {
                         </Tabs>
                     </div>
 
-                    <div className="sidebar analyze active">
-                        <header>
-                            <div className="sidebar-heading">Analyze</div>
-                            <button className="button-cancel">
-                                <i className="icon icon-cancel"></i>
-                            </button>
-                        </header>
-                        <div className="draw-buttons">
-                            <div className="pt-button-group pt-fill">
-                                <button className="pt-button pt-active">Draw</button>
-                                <button className="pt-button">Point</button>
-                            </div>
-                        </div>
-                        <div className="content">
-                            <div className="analyze-description active">
-                                <p>Draw a polygon or select a point on the map to calculate
-                                statistics for that location.</p>
-
-                            </div>
-                            <div className="analyze-result-wrapper active">
-                                <div className="analyze-result">
-                                    <div className="analyze-number">7.2</div>
-                                    <div className="label primary" htmlFor="">Average Elevation (ft)</div>
-                                </div>
-                                <div className="analyze-result">
-                                    <div className="analyze-number">6.5</div>
-                                    <div className="label primary" htmlFor="">Minimum Elevation (ft)</div>
-                                </div>
-                                <div className="analyze-result">
-                                    <div className="analyze-number">9.6</div>
-                                    <div className="label primary" htmlFor="">Maximum Elevation (ft)</div>
-                                </div>
-                                <div className="analyze-result">
-                                    <div className="analyze-number">10.2</div>
-                                    <div className="label primary" htmlFor="">Volume Change (sqft)</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <Analysis
+                        dispatch={dispatch}
+                        analysisOn={analysis.analysisOn}
+                        polygon={analysis.polygon}
+                        point={analysis.point}
+                        results={analysis.results}
+                    />
 
                     <Map className="map"
                          targetLayerOpacity={singleLayer.targetLayerOpacity}
@@ -119,6 +118,10 @@ class App extends Component {
                          zoom={11}
                          targetLayerName={singleLayer.targetLayerName}
                          renderMethod={singleLayer.renderMethod}
+                         analysisOn={analysis.analysisOn}
+                         onClearGeometries={this.onClearGeometries}
+                         onSetPolygon={this.onSetPolygon}
+                         onSetPoint={this.onSetPoint}
                     />
                 </main>
             </div>
@@ -126,24 +129,6 @@ class App extends Component {
         );
     }
 }
-
-App.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    address: PropTypes.object.isRequired,
-    neighborhoods: QueryResultTypeDef,
-    communityOrgs: QueryResultTypeDef,
-    policeDistricts: QueryResultTypeDef,
-    fireStations: QueryResultTypeDef,
-    nec: QueryResultTypeDef,
-    nac: QueryResultTypeDef,
-    radius: PropTypes.number.isRequired,
-    politics: QueryResultTypeDef,
-    censusTracts: QueryResultTypeDef,
-    demographics: QueryResultTypeDef,
-    hoverGeom: GeoJSONGeometryTypeDef,
-    highlightedGeom: GeoJSONGeometryTypeDef,
-    highlightedCard: PropTypes.string,
-};
 
 function mapStateToProps({ appPage }) {
     return appPage;

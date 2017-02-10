@@ -4,20 +4,22 @@ import L from 'leaflet';
 import {
     Map as LeafletMap,
     TileLayer,
-    Circle,
-    CircleMarker,
     GeoJson,
+    ZoomControl
 } from 'react-leaflet';
 
 import { GeoJSONGeometryTypeDef, LocationTypeDef } from 'TypeDefs';
 import { metersPerMile } from 'constants';
 import 'leaflet-fullscreen';
 
+import DrawToolbar from './DrawToolbar';
+
 export default class Map extends Component {
     constructor() {
         super();
 
         this.adjustMap = this.adjustMap.bind(this);
+        this.createDrawToolbarComponent = this.createDrawToolbarComponent.bind(this);
     }
 
     componentDidMount() {
@@ -49,12 +51,29 @@ export default class Map extends Component {
         }
     }
 
+    createDrawToolbarComponent() {
+        if (this.props.analysisOn) {
+            return (
+                <DrawToolbar
+                    onClearGeometries={this.props.onClearGeometries}
+                    onSetPolygon={this.props.onSetPolygon}
+                    onSetPoint={this.props.onSetPoint}
+                    isClear={(!this.props.polygon) && (!this.props.point)}
+                />
+            );
+        }
+
+        return null;
+    }
+
     render() {
         const { targetLayerOpacity,
                 center,
                 zoom,
                 targetLayerName,
-                renderMethod } = this.props;
+                renderMethod,
+                polygon,
+                point } = this.props;
 
         console.log("IN MAP: " + targetLayerName)
         var layer = targetLayerName == "SNOW-ON" ? "mar10idw" : "jul10idw"
@@ -81,17 +100,9 @@ export default class Map extends Component {
                                opacity={targetLayerOpacity}
                                maxZoom={19}
                            />]
-        /* } else {
-         *     console.log("HERE")
-         *     var demLayerUrl = 'http://' + hostname + ':7070/tms/png/jul10idw/{z}/{x}/{y}?colorRamp={colorRamp}'
-         *     targetLayer = [<TileLayer
-         *                       key="targetLayer"
-         *                       url={demLayerUrl}
-         *                       colorRamp={colorRamp}
-         *                       opacity={targetLayerOpacity}
-         *                       maxZoom={19}
-         *                   />]
-         * }*/
+
+
+        const drawToolbar = this.createDrawToolbarComponent();
 
         return (
             <LeafletMap
@@ -100,27 +111,21 @@ export default class Map extends Component {
                 ref={map => { this.map = map; }}
                 animate
             >
-                {/* <TileLayer
-                url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
-                /> */}
-
+                <ZoomControl position="topright" />
                 <TileLayer
-                    url="http://c.tiles.mapbox.com/v3/mapbox.world-light/{z}/{x}/{y}.png"
+                    url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
                 />
+
+                {/* <TileLayer
+                url="http://c.tiles.mapbox.com/v3/mapbox.world-light/{z}/{x}/{y}.png"
+                /> */}
 
                 <TileLayer
                     url="https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}@2x.png"
                 />
 
-              {targetLayer}
-                {/* <TileLayer
-                url={demLayerUrl}
-                layer="mar10idw"
-                colorRamp={colorRamp}
-                opacity={targetLayerOpacity}
-                maxZoom={19}
-                />
-                */}
+                {targetLayer}
+                {drawToolbar}
             </LeafletMap>
         );
     }
@@ -131,4 +136,8 @@ Map.propTypes = {
     zoom: PropTypes.number.isRequired,
     targetLayerName: PropTypes.string.isRequired,
     renderMethod: PropTypes.string.isRequired,
+    analysisOn: PropTypes.bool.isRequired,
+    onClearGeometries: PropTypes.func.isRequired,
+    onSetPolygon: PropTypes.func.isRequired,
+    onSetPoint: PropTypes.func.isRequired,
 };
