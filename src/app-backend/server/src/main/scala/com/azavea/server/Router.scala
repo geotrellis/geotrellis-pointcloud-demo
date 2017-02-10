@@ -89,8 +89,7 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
             (Future {
               try {
                 val tile =
-                  cachedTiles
-                    .getOrInsert(sk, tileReader.reader[K, Tile](layerId).read(key))
+                  getCachedTile(layerId, sk) { tileReader.reader[K, Tile](layerId).read(key) }
 
                 Some(direction -> tile)
               } catch {
@@ -217,7 +216,7 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
   def readTileNeighbours[K: SpatialComponent: AvroRecordCodec: JsonFormat: ClassTag](layerId: LayerId, key: K): Future[Seq[(K, Tile)]] = {
     Future.sequence(populateKeys(key).map { k => Future {
         try {
-          Some(k -> cachedTiles.getOrInsert(k.getComponent[SpatialKey], tileReader.reader[K, Tile](layerId).read(k)))
+          Some(k -> getCachedTile(layerId, k.getComponent[SpatialKey]) { tileReader.reader[K, Tile](layerId).read(k) })
         } catch {
           case e: ValueNotFoundError => None
         }
@@ -391,91 +390,58 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
                   val tileDimensions =
                     md.layout.tileLayout.tileDimensions
 
-                  if(!layerGridBounds.contains(key.col, key.row)) Future { None }
-                  else {
-                    val elevationTile =
-                      Future {
-                        cachedTiles
-                          .getOrInsert(key, tileReader.reader[SpatialKey, Tile](layerId).read(key))
+                  val result: Future[Option[HttpResponse]] =
+                    if(!layerGridBounds.contains(key.col, key.row)) { Future { None } }
+                    else {
+                      val elevationTile =
+                        Future {
+                          getCachedTile(layerId, key) { tileReader.reader[SpatialKey, Tile](layerId).read(key) }
+                        }
+
+                      val hillshadeTile =
+                        getBufferedTile(layerId, key, layerGridBounds, tileDimensions)
+                          .map { case BufferedTile(tile, bounds) =>
+                            printAnyException {
+                              Hillshade(
+                                tile,
+                                Square(1),
+                                Some(bounds),
+                                md.cellSize,
+                                azimuth,
+                                altitude,
+                                zFactor,
+                                target
+                              )
+                            }
+                        }
+
+                      val breaks =
+                        attributeStore
+                          .read[Histogram[Double]](LayerId(layerId.name, 0), "histogram")
+                          .asInstanceOf[StreamingHistogram]
+                          .quantileBreaks(50)
+
+                      val ramp =
+                        ColorRampMap
+                          .getOrElse(colorRamp, ColorRamps.BlueToRed)
+
+                      val colorMap =
+                        ramp
+                          .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
+
+                      for(
+                        e <- elevationTile;
+                        h <- hillshadeTile
+                      ) yield {
+                        val bytes =
+                          colorWithHillshade(e, h, colorMap)
+                            .renderPng
+                            .bytes
+
+                        Some(HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes)))
                       }
-
-                    val hillshadeTile =
-                      getBufferedTile(layerId, key, layerGridBounds, tileDimensions)
-                        .map { case BufferedTile(tile, bounds) =>
-                          printAnyException {
-                          Hillshade(
-                            tile,
-                            Square(1),
-                            Some(bounds),
-                            md.cellSize,
-                            azimuth,
-                            altitude,
-                            zFactor,
-                            target
-                          )
-                          }
-                      }
-
-                    val breaks =
-                      attributeStore
-                        .read[Histogram[Double]](LayerId(layerId.name, 0), "histogram")
-                        .asInstanceOf[StreamingHistogram]
-                        .quantileBreaks(50)
-
-                    val ramp =
-                      ColorRampMap
-                        .getOrElse(colorRamp, ColorRamps.BlueToRed)
-
-                    val colorMap =
-                      ramp
-                        .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
-
-                    // getBufferedTile(layerId, key, layerGridBounds, tileDimensions)
-                    //   .map { case BufferedTile(tile, bounds) =>
-                    //     try {
-                    //       val bytes =
-                    //         Hillshade(tile, Square(1), Some(bounds), md.cellSize, azimuth, altitude, zFactor, target)
-                    //           .renderPng
-                    //           .bytes
-
-                    //       HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
-                    //     } catch {
-                    //       case e: Throwable =>
-                    //         printException(e)
-                    //     }
-
-                    for(
-                      e <- elevationTile;
-                      h <- hillshadeTile
-                    ) yield {
-                      val bytes =
-                        colorWithHillshade(e, h, colorMap)
-                          .renderPng
-                          .bytes
-
-                      HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
                     }
-                  }
-
-                  // val future =
-                  //   readTileNeighbours(layerId, key) map { seq =>
-                  //     seq.runOnSeq(key, md) { case (tile, bounds) =>
-                  //       try {
-                  //         Hillshade(tile, Square(1), bounds, md.cellSize, azimuth, altitude, zFactor, target)
-                  //       } catch {
-                  //         case e: Throwable =>
-                  //           import java.io._
-                  //           val sw = new StringWriter
-                  //           e.printStackTrace(new PrintWriter(sw))
-                  //           println(sw.toString)
-                  //           throw e
-                  //       }
-                  //     }
-                  //   } map { tile =>
-                  //     val bytes = tile.renderPng.bytes
-                  //     HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
-                  //   }
-                  // Await.result(future, 100 seconds): HttpResponse
+                  result
                 }
               }
             }

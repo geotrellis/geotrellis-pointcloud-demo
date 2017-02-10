@@ -208,6 +208,7 @@ header {
   z-index: 1000;
 }
 
+
 .draw-buttons {
   padding: 0 1rem;
 }
@@ -272,4 +273,67 @@ header {
       margin-top: 0px;
   }
 
+@import
+  "../node_modules/leaflet-draw/dist/leaflet.draw.css";
+
+.leaflet-draw {
+    font: 14px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
+    top: 10px;
+    left: 21rem;
+
+    .leaflet-draw-draw-polygon.leaflet-disabled {
+        cursor: default;
+    }
+
+    .leaflet-draw-toolbar {
+        box-shadow: none;
+        border-radius: 0px;
+
+        a, a:hover {
+            border-radius: 4px;
+            background-image: none;
+            display: inline-block;
+            height: 27px;
+            width: auto;
+            margin-right: 10px;
+            padding: 3px 10px;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.74);
+
+            &.leaflet-draw-draw-polygon {
+                color: #fff;
+                background-color: #286090;
+                border-color: #204d74;
+                background-image: none;
+
+                &.leaflet-disabled {
+                    color: #aaa;
+                    background-color: #eee;
+                }
+            }
+
+            &.leaflet-draw-draw-point {
+                color: #fff;
+                background-color: #286090;
+                border-color: #204d74;
+                background-image: none;
+
+                &.leaflet-disabled {
+                    color: #aaa;
+                    background-color: #eee;
+                }
+            }
+
+            &.leaflet-draw-edit-remove {
+                color: #fff;
+                background-color: #c9302c;
+                border-color: #ac2925;
+                background-image: none;
+
+                &.leaflet-disabled {
+                    color: #aaa;
+                    background-color: #eee;
+                }
+            }
+        }
+    }
 }

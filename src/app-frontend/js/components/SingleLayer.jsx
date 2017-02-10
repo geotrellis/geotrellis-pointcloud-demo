@@ -100,7 +100,7 @@ export default class SingleLayer extends Component {
                 </div>
                 <div className="option-section">
                     <label htmlFor="" className="primary">DEM Creation Method</label>
-                    <div class="pt-button-group pt-large pt-fill">
+                    <div className="pt-button-group pt-fill">
                         <Button
                             active={staticChecked}
                             onClick={this.checkStatic}

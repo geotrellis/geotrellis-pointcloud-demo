@@ -6,7 +6,11 @@ import {
     SET_TARGET_LAYER,
     SET_TARGET_LAYER_OPACITY,
     SET_DATA_SOURCE_TYPE,
-    SET_RENDER_METHOD
+    SET_RENDER_METHOD,
+    CLEAR_GEOMETRIES,
+    SET_POLYGON,
+    SET_POINT,
+    SET_ANALYSIS_ON
 } from './actions';
 
 
@@ -31,6 +35,17 @@ const initAppPage = {
         dynamicChecked: false,
         targetLayerOpacity: 0.9,
     },
+    analysis: {
+        analysisOn: true,
+        results: {
+            mean: 0.0,
+            min: 0.0,
+            max: 0.0,
+            diff: 0.0
+        },
+        polygon: null,
+        point: null,
+    },
     center: defaultMapCenter,
 };
 
@@ -38,8 +53,20 @@ export default function appPage(state = initAppPage, action) {
     var newState = state;
 
     switch (action.type) {
-    case SET_TARGET_LAYER:
-        console.log("LAYER NAME: " + action.payload);
+        case CLEAR_GEOMETRIES:
+            console.log("Clearing Geometries");
+            newState = immutable.set(newState, 'analysis.polygon', null);
+            newState = immutable.set(newState, 'analysis.point', null);
+        case SET_POLYGON:
+            console.log("Setting polygon");
+            newState = immutable.set(newState, 'analysis.polygon', action.payload);
+            newState = immutable.set(newState, 'analysis.point', null);
+        case SET_POINT:
+            console.log("Setting polygon");
+            newState = immutable.set(newState, 'analysis.polygon', null);
+            newState = immutable.set(newState, 'analysis.point', action.payload);
+        case SET_TARGET_LAYER:
+            console.log("LAYER NAME: " + action.payload);
             var snowOnChecked = action.payload == "SNOW-ON";
             var snowOffChecked = action.payload == "SNOW-OFF";
 
@@ -72,7 +99,11 @@ export default function appPage(state = initAppPage, action) {
                 default:
                     return newState;
             }
+        case SET_ANALYSIS_ON:
+            newState = immutable.set(newState, 'analysis.analysisOn', action.payload);
+            return newState;
         default:
             return newState;
     }
+
 }
