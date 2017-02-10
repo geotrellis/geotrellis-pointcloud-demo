@@ -1,11 +1,13 @@
 export const SET_TARGET_LAYER = 'SET_TARGET_LAYER';
 export const SET_TARGET_LAYER_OPACITY = 'SET_TARGET_LAYER_OPACITY';
 export const SET_DATA_SOURCE_TYPE = 'SET_DATA_SOURCE_TYPE';
+export const SET_DEM_ALGORITHM = 'SET_DEM_ALGORITHM';
 export const SET_RENDER_METHOD = 'SET_RENDER_METHOD';
 export const CLEAR_GEOMETRIES = 'CLEAR_GEOMETRIES';
 export const SET_POLYGON = 'SET_POLYGON';
 export const SET_POINT = 'SET_POINT';
 export const SET_ANALYSIS_ON = 'SET_ANALYSIS_ON';
+export const SET_ACTIVE_TAB = 'SET_ACTIVE_TAB';
 
 export function setTargetLayerName(layerName) {
     return {
@@ -35,6 +37,13 @@ export function setRenderMethod(method) {
     };
 }
 
+export function setDEMAlgorithm(method) {
+    return {
+        type: SET_DEM_ALGORITHM,
+        payload: method
+    };
+}
+
 export function clearGeometries() {
     return {
         type: CLEAR_GEOMETRIES,
@@ -61,4 +70,11 @@ export function setAnalysisOn(flag) {
         type: SET_ANALYSIS_ON,
         payload: flag
     };
+}
+
+export function setActiveTab(idx) {
+    return {
+        type: SET_ACTIVE_TAB,
+        payload: idx
+    }
 }

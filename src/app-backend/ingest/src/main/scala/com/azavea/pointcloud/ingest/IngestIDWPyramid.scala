@@ -106,7 +106,7 @@ object IngestIDWPyramid {
 
       val tiles =
         PointCloudToDem(
-          tiled, layout.tileLayout.tileDimensions,
+          tiled, opts.cellSize,
           PointToGrid.Options(cellType = FloatConstantNoDataCellType)
         )
 

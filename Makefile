@@ -18,7 +18,7 @@ COLOR_TAG=--tags Color=${COLOR}
 endif
 
 ifndef CLUSTER_ID
-CLUSTER_ID=$(shell if [ -e "cluster-id.txt" ]; then cat cluster-id.txt; fi)
+CLUSTER_ID=$(shell if [ -e "cluster-id-${EMR_TAG}.txt" ]; then cat cluster-id-${EMR_TAG}.txt; fi)
 endif
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
@@ -59,7 +59,7 @@ create-cluster:
 'Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE}' \
 --bootstrap-actions \
 Name=BootstrapPDAL,Path=${S3_URI}/bootstrap-pdal.sh \
-| tee cluster-id.txt
+| tee cluster-id-${EMR_TAG}.txt
 
 ingest-idw:
 	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
