@@ -71,7 +71,7 @@ data
 
 # EMR #
 
-cluster-id.txt
+cluster-id*.txt
 last-step-id.txt
 
 scripts/upsert.json
