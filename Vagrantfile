@@ -11,7 +11,7 @@ Vagrant.configure(2) do |config|
   config.vm.synced_folder "~/.ivy2", "/home/vagrant/.ivy2"
 
   config.vm.provider :virtualbox do |vb|
-    vb.memory = 2048
+    vb.memory = 4096
     vb.cpus = 2
   end
 
