@@ -82,16 +82,17 @@ export default class SingleLayer extends Component {
             <div className="content tab-content content-singlelayer active">
                 <div className="option-section">
                     <label htmlFor="" className="primary">Data Source Type</label>
-                    <div class="pt-button-group pt-large pt-fill">
+                    <div className="pt-button-group pt-fill">
                         <Button
                             active={staticChecked}
                             onClick={this.checkStatic}
-                            text="STATIC"
+                            text="Static"
+                            className="pt-active"
                         />
                         <Button
                             active={dynamicChecked}
                             onClick={this.checkDynamic}
-                            text="DYNAMIC"
+                            text="Dynamic"
                         />
                     </div>
                     <label htmlFor="" className="secondary">Min &amp; Max Elevation</label>
@@ -114,7 +115,7 @@ export default class SingleLayer extends Component {
                 </div>
                 <div className="option-section">
                     <label htmlFor="" className="primary">Render Options</label>
-                    <div class="pt-button-group pt-large pt-fill">
+                    <div className="pt-button-group pt-fill">
                         <Button
                             active={colorRampChecked}
                             onClick={this.checkColorRamp}
@@ -140,16 +141,16 @@ export default class SingleLayer extends Component {
                 </div>
                 <div className="option-section">
                     <label htmlFor="" className="primary">Dataset</label>
-                    <div class="pt-button-group pt-large pt-fill">
+                    <div className="pt-button-group pt-fill">
                         <Button
                             active={snowOnChecked}
                             onClick={this.checkSnowOn}
-                            text="SNOW ON"
+                            text="Snow On"
                         />
                         <Button
                             active={snowOffChecked}
                             onClick={this.checkSnowOff}
-                            text="SNOW OFF"
+                            text="No Layer"
                         />
                     </div>
                 </div>

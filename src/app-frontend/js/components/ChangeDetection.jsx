@@ -53,16 +53,16 @@ export default class ChangeDetection extends Component {
             <div className="content tab-content content-changedetection active">
                 <div className="option-section">
                     <label htmlFor="" className="primary">Data Source Type</label>
-                    <div class="pt-button-group pt-large pt-fill">
+                    <div className="pt-button-group pt-fill">
                         <Button
                             active={staticChecked}
                             onClick={this.checkStatic}
-                            text="STATIC"
+                            text="Static"
                         />
                         <Button
                             active={dynamicChecked}
                             onClick={this.checkDynamic}
-                            text="DYNAMIC"
+                            text="Dynamic"
                         />
                     </div>
                     <label htmlFor="" className="secondary">Min &amp; Max Elevation</label>
