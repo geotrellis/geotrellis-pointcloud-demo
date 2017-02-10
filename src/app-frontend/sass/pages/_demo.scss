@@ -130,6 +130,9 @@
   font-size: 1.8rem;
   border: 0;
   border-radius: 3px;
+  // Added because I thought it looked good over the map (like leaflet draw buttons).
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.74);
+
 }
 
 header {
@@ -272,13 +275,13 @@ header {
   .pt-tab-panel {
       margin-top: 0px;
   }
+}
 
 @import
   "../node_modules/leaflet-draw/dist/leaflet.draw.css";
 
 .leaflet-draw {
-    font: 14px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
-    top: 10px;
+    top: 1rem;
     left: 21rem;
 
     .leaflet-draw-draw-polygon.leaflet-disabled {
@@ -289,49 +292,39 @@ header {
         box-shadow: none;
         border-radius: 0px;
 
-        a, a:hover {
+        button {
+            font-weight: 600 !important;
             border-radius: 4px;
             background-image: none;
             display: inline-block;
-            height: 27px;
+            height: 30px;
             width: auto;
             margin-right: 10px;
-            padding: 3px 10px;
+            padding: 2px 10px;
             box-shadow: 0 0 6px rgba(0, 0, 0, 0.74);
 
-            &.leaflet-draw-draw-polygon {
-                color: #fff;
-                background-color: #286090;
-                border-color: #204d74;
+            &.leaflet-draw-draw-geom {
+                color: #f5f8fa;
+                background-color: $brand-primary;
                 background-image: none;
-
+                border-color: $brand-primary;
                 &.leaflet-disabled {
-                    color: #aaa;
-                    background-color: #eee;
-                }
-            }
-
-            &.leaflet-draw-draw-point {
-                color: #fff;
-                background-color: #286090;
-                border-color: #204d74;
-                background-image: none;
-
-                &.leaflet-disabled {
-                    color: #aaa;
-                    background-color: #eee;
+                    color: #B5BABB;
+                    background-color: #465256 !important;
+                    border-color: #465256 !important;
                 }
             }
 
             &.leaflet-draw-edit-remove {
-                color: #fff;
-                background-color: #c9302c;
+                color: #f5f8fa;
+                background-color: $brand-primary;
                 border-color: #ac2925;
                 background-image: none;
 
                 &.leaflet-disabled {
-                    color: #aaa;
-                    background-color: #eee;
+                    color: #B5BABB;
+                    background-color: #465256 !important;
+                    border-color: transparent;
                 }
             }
         }

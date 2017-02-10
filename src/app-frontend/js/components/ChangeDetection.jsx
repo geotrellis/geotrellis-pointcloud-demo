@@ -4,7 +4,8 @@ import { Slider, Button, Tabs, TabList, TabPanel, Tab } from "@blueprintjs/core"
 
 import {
     setTargetLayerOpacity,
-    setDataSourceType
+    setDataSourceType,
+    setDEMAlgorithm
 } from './actions';
 
 export default class ChangeDetection extends Component {
@@ -14,6 +15,8 @@ export default class ChangeDetection extends Component {
         this.handleTargetLayerOpacityChange = this.handleTargetLayerOpacityChange.bind(this);
         this.checkStatic = this.checkStatic.bind(this);
         this.checkDynamic = this.checkDynamic.bind(this);
+        this.checkIdw = this.checkIdw.bind(this);
+        this.checkTin = this.checkTin.bind(this);
     }
 
     handleTargetLayerOpacityChange(value) {
@@ -24,21 +27,28 @@ export default class ChangeDetection extends Component {
 
     checkStatic() {
         const { dispatch } = this.props;
-        dispatch(setDataSourceType("DYNAMIC"));
+        dispatch(setDataSourceType("STATIC"));
     }
 
     checkDynamic() {
         const { dispatch } = this.props;
-        dispatch(setDataSourceType("STATIC"));
+        dispatch(setDataSourceType("DYNAMIC"));
     }
 
-    /* checkIdw() {
-     *     dispatch(setDEMAlogrithm("IDW"));
-     * }
+    checkIdw() {
+        const { dispatch } = this.props;
+        dispatch(setDEMAlgorithm("IDW"));
+    }
 
-     * checkTin() {
-     *     dispatch(setDEMAlgorithm("TIN"));
-     * }*/
+    checkTin() {
+        const { dispatch } = this.props;
+        dispatch(setDEMAlgorithm("TIN"));
+    }
+
+    isActive(b) {
+        console.log("BOOLEAN " + b);
+        return b ? "pt-active" : "";
+    }
 
     render() {
         const {
@@ -58,28 +68,32 @@ export default class ChangeDetection extends Component {
                             active={staticChecked}
                             onClick={this.checkStatic}
                             text="Static"
+                            className={this.isActive(staticChecked)}
                         />
                         <Button
                             active={dynamicChecked}
                             onClick={this.checkDynamic}
                             text="Dynamic"
+                            className={this.isActive(dynamicChecked)}
                         />
                     </div>
-                    <label htmlFor="" className="secondary">Min &amp; Max Elevation</label>
-                    <div>(Slider)</div>
+                    <label htmlFor="" className="secondary" style={{display: "none"}}>Min &amp; Max Elevation</label>
+                    <div style={{display: "none"}}>(Slider)</div>
                 </div>
                 <div className="option-section">
                     <label htmlFor="" className="primary">DEM Creation Method</label>
                     <div className="pt-button-group pt-fill">
                         <Button
-                            active={staticChecked}
-                            onClick={this.checkStatic}
+                            active={tinChecked}
+                            onClick={this.checkTin}
                             text="TIN"
+                            className={this.isActive(tinChecked)}
                         />
                         <Button
-                            active={dynamicChecked}
-                            onClick={this.checkDynamic}
+                            active={idwChecked}
+                            onClick={this.checkIdw}
                             text="IDW"
+                            className={this.isActive(idwChecked)}
                         />
                     </div>
                 </div>

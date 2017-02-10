@@ -6,16 +6,20 @@ import {
     SET_TARGET_LAYER,
     SET_TARGET_LAYER_OPACITY,
     SET_DATA_SOURCE_TYPE,
+    SET_DEM_ALGORITHM,
     SET_RENDER_METHOD,
     CLEAR_GEOMETRIES,
     SET_POLYGON,
     SET_POINT,
-    SET_ANALYSIS_ON
+    SET_ANALYSIS_ON,
+    SET_ACTIVE_TAB
 } from './actions';
 
 
 const initAppPage = {
+    activeTab: 0,
     singleLayer: {
+        active: true,
         idwChecked: true,
         tinChecked: false,
         staticChecked: true,
@@ -24,11 +28,12 @@ const initAppPage = {
         colorRampChecked: true,
         hillshadeChecked: false,
         snowOnChecked: true,
-        snowOffChecked: true,
+        snowOffChecked: false,
         renderMethod: "COLORRAMP",
-        targetLayerName: "SNOW-ON",
+        targetLayerName: "SNOW-ON"
     },
     changeDetection: {
+        active: false,
         idwChecked: true,
         tinChecked: false,
         staticChecked: true,
@@ -36,7 +41,7 @@ const initAppPage = {
         targetLayerOpacity: 0.9,
     },
     analysis: {
-        analysisOn: true,
+        analysisOn: false,
         results: {
             mean: 0.0,
             min: 0.0,
@@ -49,6 +54,14 @@ const initAppPage = {
     center: defaultMapCenter,
 };
 
+function propForActiveTab(state, propName) {
+    if(state.singleLayer.active) {
+        return 'singleLayer.' + propName;
+    } else {
+        return 'changeDetection.' + propName;
+    }
+}
+
 export default function appPage(state = initAppPage, action) {
     var newState = state;
 
@@ -57,14 +70,17 @@ export default function appPage(state = initAppPage, action) {
             console.log("Clearing Geometries");
             newState = immutable.set(newState, 'analysis.polygon', null);
             newState = immutable.set(newState, 'analysis.point', null);
+            return newState;
         case SET_POLYGON:
             console.log("Setting polygon");
             newState = immutable.set(newState, 'analysis.polygon', action.payload);
             newState = immutable.set(newState, 'analysis.point', null);
+            return newState;
         case SET_POINT:
             console.log("Setting polygon");
             newState = immutable.set(newState, 'analysis.polygon', null);
             newState = immutable.set(newState, 'analysis.point', action.payload);
+            return newState;
         case SET_TARGET_LAYER:
             console.log("LAYER NAME: " + action.payload);
             var snowOnChecked = action.payload == "SNOW-ON";
@@ -75,15 +91,26 @@ export default function appPage(state = initAppPage, action) {
             newState = immutable.set(newState, 'singleLayer.snowOffChecked', snowOffChecked);
             return newState;
         case SET_TARGET_LAYER_OPACITY:
-            return immutable.set(newState, 'singleLayer.targetLayerOpacity', action.payload);
+            return immutable.set(newState, propForActiveTab(state, 'targetLayerOpacity'), action.payload);
+        case SET_DEM_ALGORITHM:
+            switch (action.payload) {
+                case 'IDW':
+                    newState = immutable.set(newState, propForActiveTab(state, 'idwChecked'), true);
+                    return immutable.set(newState, propForActiveTab(state, 'tinChecked'), false);
+                case 'TIN':
+                    newState = immutable.set(newState, propForActiveTab(state, 'idwChecked'), false);
+                    return immutable.set(newState, propForActiveTab(state, 'tinChecked'), true);
+                default:
+                    return newState;
+            }
         case SET_DATA_SOURCE_TYPE:
             switch (action.payload) {
                 case 'STATIC':
-                    newState = immutable.set(newState, 'singleLayer.staticChecked', true);
-                    return immutable.set(newState, 'singleLayer.dynamicChecked', false);
+                    newState = immutable.set(newState, propForActiveTab(state, 'staticChecked'), true);
+                    return immutable.set(newState, propForActiveTab(state, 'dynamicChecked'), false);
                 case 'DYNAMIC':
-                    newState = immutable.set(newState, 'singleLayer.staticChecked', false);
-                    return immutable.set(newState, 'singleLayer.dynamicChecked', true);
+                    newState = immutable.set(newState, propForActiveTab(state, 'staticChecked'), false);
+                    return immutable.set(newState, propForActiveTab(state, 'dynamicChecked'), true);
                 default:
                     return newState;
             }
@@ -93,14 +120,23 @@ export default function appPage(state = initAppPage, action) {
                 case 'COLORRAMP':
                     newState = immutable.set(newState, 'singleLayer.colorRampChecked', true);
                     return immutable.set(newState, 'singleLayer.hillshadeChecked', false);
-                case 'DYNAMIC':
-                    newState = immutable.set(newState, 'singleLayer.colorRampCheckd', false);
+                case 'HILLSHADE':
+                    newState = immutable.set(newState, 'singleLayer.colorRampChecked', false);
                     return immutable.set(newState, 'singleLayer.hillshadeChecked', true);
                 default:
                     return newState;
             }
         case SET_ANALYSIS_ON:
             newState = immutable.set(newState, 'analysis.analysisOn', action.payload);
+            if(!action.payload) {
+                newState = immutable.set(newState, 'analysis.polygon', null);
+                newState = immutable.set(newState, 'analysis.point', null);
+            }
+            return newState;
+        case SET_ACTIVE_TAB:
+            newState = immutable.set(newState, 'activeTab', action.payload);
+            newState = immutable.set(newState, 'singleLayer.active', action.payload == 0);
+            newState = immutable.set(newState, 'changeDetection.active', action.payload == 1);
             return newState;
         default:
             return newState;

@@ -21,7 +21,8 @@ import {
     clearGeometries,
     setPolygon,
     setPoint,
-    setAnalysisOn
+    setAnalysisOn,
+    setActiveTab
 } from './actions';
 
 /* import PGWLogo from '../../img/geotrellis-logo.png';*/
@@ -34,6 +35,7 @@ class App extends Component {
         this.onSetPolygon = this.onSetPolygon.bind(this);
         this.onSetPoint = this.onSetPoint.bind(this);
         this.onAnalyzeClicked = this.onAnalyzeClicked.bind(this);
+        this.onTabChanged = this.onTabChanged.bind(this);
     }
 
     onClearGeometries() {
@@ -43,6 +45,7 @@ class App extends Component {
 
     onSetPolygon(polygon) {
         const { dispatch } = this.props;
+        console.log("SET POLYGON: " + polygon);
         dispatch(setPolygon(polygon));
     }
 
@@ -56,14 +59,20 @@ class App extends Component {
         dispatch(setAnalysisOn(true));
     }
 
+    onTabChanged(selectedTabIndex, prevSelectedTabIndex) {
+        const { dispatch } = this.props;
+        dispatch(setActiveTab(selectedTabIndex));
+    }
+
     render() {
         const {
             dispatch,
+            activeTab,
             singleLayer,
             changeDetection,
             center,
             zoom,
-            analysis
+            analysis,
         } = this.props;
 
         return (
@@ -71,7 +80,10 @@ class App extends Component {
                 <main>
                     <button className="button-analyze" onClick={this.onAnalyzeClicked}>Analyze</button>
                     <div className="sidebar options">
-                        <Tabs>
+                        <Tabs
+                            onChange={this.onTabChanged}
+                            selectedTabIndex={activeTab}
+                        >
                             <TabList className="main-tabs">
                                 <Tab><span>Single Layer</span></Tab>
                                 <Tab><span>Change Detection</span></Tab>
@@ -113,15 +125,16 @@ class App extends Component {
                     />
 
                     <Map className="map"
-                         targetLayerOpacity={singleLayer.targetLayerOpacity}
                          center={center}
-                         zoom={11}
-                         targetLayerName={singleLayer.targetLayerName}
-                         renderMethod={singleLayer.renderMethod}
+                         zoom={12}
+                         singleLayer={singleLayer}
+                         changeDetection={changeDetection}
                          analysisOn={analysis.analysisOn}
                          onClearGeometries={this.onClearGeometries}
                          onSetPolygon={this.onSetPolygon}
                          onSetPoint={this.onSetPoint}
+                         polygon={analysis.polygon}
+                         point={analysis.point}
                     />
                 </main>
             </div>
