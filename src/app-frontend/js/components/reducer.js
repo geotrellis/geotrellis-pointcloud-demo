@@ -3,6 +3,7 @@ import immutable from 'object-path-immutable';
 import { defaultMapCenter } from 'constants';
 
 import {
+    SET_ZOOM,
     SET_TARGET_LAYER,
     SET_TARGET_LAYER_OPACITY,
     SET_DATA_SOURCE_TYPE,
@@ -12,12 +13,16 @@ import {
     SET_POLYGON,
     SET_POINT,
     SET_ANALYSIS_ON,
-    SET_ACTIVE_TAB
+    SET_ACTIVE_TAB,
+    START_FETCH_STATS,
+    END_FETCH_STATS,
+    FAIL_FETCH_STATS,
 } from './actions';
 
 
 const initAppPage = {
     activeTab: 0,
+    zoom: 12,
     singleLayer: {
         active: true,
         idwChecked: true,
@@ -42,12 +47,9 @@ const initAppPage = {
     },
     analysis: {
         analysisOn: false,
-        results: {
-            mean: 0.0,
-            min: 0.0,
-            max: 0.0,
-            diff: 0.0
-        },
+        results: null,
+        isFetching: false,
+        fetchError: null,
         polygon: null,
         point: null,
     },
@@ -66,10 +68,16 @@ export default function appPage(state = initAppPage, action) {
     var newState = state;
 
     switch (action.type) {
+        case SET_ZOOM:
+            console.log("SET_ZOOM:" + action.payload);
+            newState = immutable.set(newState, "zoom", action.payload);
+            return newState;
         case CLEAR_GEOMETRIES:
             console.log("Clearing Geometries");
             newState = immutable.set(newState, 'analysis.polygon', null);
             newState = immutable.set(newState, 'analysis.point', null);
+            newState = immutable.set(newState, 'analysis.isFetching', false);
+            newState = immutable.set(newState, 'analysis.fetchError', action.payload);
             return newState;
         case SET_POLYGON:
             console.log("Setting polygon");
@@ -129,17 +137,43 @@ export default function appPage(state = initAppPage, action) {
         case SET_ANALYSIS_ON:
             newState = immutable.set(newState, 'analysis.analysisOn', action.payload);
             if(!action.payload) {
+                newState = immutable.set(newState, 'analysis.results', null);
                 newState = immutable.set(newState, 'analysis.polygon', null);
                 newState = immutable.set(newState, 'analysis.point', null);
+                newState = immutable.set(newState, 'analysis.isFetching', false);
+                newState = immutable.set(newState, 'analysis.fetchError', action.payload);
             }
             return newState;
         case SET_ACTIVE_TAB:
             newState = immutable.set(newState, 'activeTab', action.payload);
             newState = immutable.set(newState, 'singleLayer.active', action.payload == 0);
             newState = immutable.set(newState, 'changeDetection.active', action.payload == 1);
+            newState = immutable.set(newState, 'analysis.polygon', null);
+            newState = immutable.set(newState, 'analysis.point', null);
+            newState = immutable.set(newState, 'analysis.isFetching', false);
+            newState = immutable.set(newState, 'analysis.fetchError', null);
+
+            return newState;
+        case START_FETCH_STATS:
+            console.log("START FETCH STATS REDUCER");
+            newState = immutable.set(newState, 'analysis.isFetching', true);
+            return newState;
+        case END_FETCH_STATS:
+            console.log("FETCH RESULT: " + action.payload);
+            if(state.analysis.isFetching) {
+                newState = immutable.set(newState, 'analysis.isFetching', false);
+                newState = immutable.set(newState, 'analysis.results', action.payload);
+            }
+            return newState;
+        case FAIL_FETCH_STATS:
+            console.log("FETCH ERROR: " + action.payload);
+            if(state.analysis.isFetching) {
+                newState = immutable.set(newState, 'analysis.isFetching', false);
+                newState = immutable.set(newState, 'analysis.fetchError', action.payload);
+            }
             return newState;
         default:
+            console.log("UNKOWN ACTION: " + action.type);
             return newState;
     }
-
 }

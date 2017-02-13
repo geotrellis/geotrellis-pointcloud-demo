@@ -7,7 +7,7 @@ export const LayerNames = {
     snowOff: "jul10",
     addTin: function(ln) { return ln + "tin"; },
     addIdw: function(ln) { return ln + "idw"; },
-}
+};
 
 export const polygonDefaults = {
     fillColor: '#0000FF',

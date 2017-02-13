@@ -15,6 +15,8 @@ import SingleLayer from './SingleLayer';
 import ChangeDetection from './ChangeDetection';
 import Analysis from './Analysis';
 
+import { LayerNames as LN } from '../common/constants.js';
+
 import {
     setTargetLayerOpacity,
     setDataSourceType,
@@ -22,7 +24,11 @@ import {
     setPolygon,
     setPoint,
     setAnalysisOn,
-    setActiveTab
+    setActiveTab,
+    fetchSinglePointStats,
+    fetchDiffPointStats,
+    fetchSinglePolyStats,
+    fetchDiffPolyStats
 } from './actions';
 
 /* import PGWLogo from '../../img/geotrellis-logo.png';*/
@@ -44,14 +50,49 @@ class App extends Component {
     }
 
     onSetPolygon(polygon) {
-        const { dispatch } = this.props;
+        const {
+            dispatch,
+            singleLayer,
+            changeDetection,
+            zoom,
+        } = this.props;
         console.log("SET POLYGON: " + polygon);
         dispatch(setPolygon(polygon));
+        if(singleLayer.active) {
+            let layerName = singleLayer.targetLayerName == "SNOW-ON" ? LN.snowOn : LN.snowOff;
+            layerName = singleLayer.idwChecked ? LN.addIdw(layerName) : LN.addTin(layerName);
+
+            dispatch(fetchSinglePolyStats(layerName, zoom, polygon));
+        } else {
+            let layerName1 = LN.snowOn;
+            layerName1 = changeDetection.idwChecked ? LN.addIdw(layerName1) : LN.addTin(layerName1);
+            let layerName2 = LN.snowOff;
+            layerName2 = changeDetection.idwChecked ? LN.addIdw(layerName2) : LN.addTin(layerName2);
+            dispatch(fetchDiffPolyStats(layerName1, layerName2, zoom, polygon));
+
+        }
     }
 
     onSetPoint(point) {
-        const { dispatch } = this.props;
+        const {
+            dispatch,
+            singleLayer,
+            changeDetection,
+            zoom,
+        } = this.props;
         dispatch(setPoint(point));
+        if(singleLayer.active) {
+            let layerName = singleLayer.targetLayerName == "SNOW-ON" ? LN.snowOn : LN.snowOff;
+            layerName = singleLayer.idwChecked ? LN.addIdw(layerName) : LN.addTin(layerName);
+            dispatch(fetchSinglePointStats(layerName, zoom, point));
+        } else {
+            let layerName1 = LN.snowOn;
+            layerName1 = changeDetection.idwChecked ? LN.addIdw(layerName1) : LN.addTin(layerName1);
+            let layerName2 = LN.snowOff;
+            layerName2 = changeDetection.idwChecked ? LN.addIdw(layerName2) : LN.addTin(layerName2);
+            dispatch(fetchDiffPointStats(layerName1, layerName2, zoom, point));
+
+        }
     }
 
     onAnalyzeClicked() {
@@ -125,8 +166,9 @@ class App extends Component {
                     />
 
                     <Map className="map"
+                         dispatch={dispatch}
                          center={center}
-                         zoom={12}
+                         zoom={zoom}
                          singleLayer={singleLayer}
                          changeDetection={changeDetection}
                          analysisOn={analysis.analysisOn}

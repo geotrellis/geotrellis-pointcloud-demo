@@ -90,25 +90,25 @@ export default class SingleLayer extends Component {
 
         return (
             <div className="content tab-content content-singlelayer active">
-                <div className="option-section">
-                    <label htmlFor="" className="primary">Data Source Type</label>
-                    <div className="pt-button-group pt-fill">
-                        <Button
-                            active={staticChecked}
-                            onClick={this.checkStatic}
-                            text="Static"
-                            className={this.isActive(staticChecked)}
-                        />
-                        <Button
-                            active={dynamicChecked}
-                            onClick={this.checkDynamic}
-                            text="Dynamic"
-                            className={this.isActive(dynamicChecked)}
-                        />
-                    </div>
-                    <label htmlFor="" className="secondary" style={{display: "none"}}>Min &amp; Max Elevation</label>
-                    <div style={{display: "none"}}>(Slider)</div>
+                {/* <div className="option-section">
+                <label htmlFor="" className="primary">Data Source Type</label>
+                <div className="pt-button-group pt-fill">
+                <Button
+                active={staticChecked}
+                onClick={this.checkStatic}
+                text="Static"
+                className={this.isActive(staticChecked)}
+                />
+                <Button
+                active={dynamicChecked}
+                onClick={this.checkDynamic}
+                text="Dynamic"
+                className={this.isActive(dynamicChecked)}
+                />
                 </div>
+                <label htmlFor="" className="secondary" style={{display: "none"}}>Min &amp; Max Elevation</label>
+                <div style={{display: "none"}}>(Slider)</div>
+                </div> */}
                 <div className="option-section">
                     <label htmlFor="" className="primary">DEM Creation Method</label>
                     <div className="pt-button-group pt-fill">
