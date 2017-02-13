@@ -53,3 +53,11 @@ lazy val server =
 lazy val ingest =
   (project in file("ingest"))
     .settings(commonSettings: _*)
+
+/** Exploritory code, to contain tests
+  * and spark jobs that are meant for initial
+  * data analysis.
+  */
+lazy val explore =
+  (project in file("explore"))
+    .settings(commonSettings: _*)

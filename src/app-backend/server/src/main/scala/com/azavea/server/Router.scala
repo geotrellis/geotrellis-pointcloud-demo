@@ -13,6 +13,7 @@ import geotrellis.pointcloud.spark.io._
 import geotrellis.pointcloud.spark.io.hadoop._
 import geotrellis.spark.io._
 import geotrellis.spark.io.hadoop._
+import geotrellis.spark.summary._
 import geotrellis.spark.tiling.FloatingLayoutScheme
 import geotrellis.spark.mapalgebra._
 import geotrellis.spark.mapalgebra.focal._
@@ -22,6 +23,9 @@ import geotrellis.raster.io.geotiff.GeoTiff
 import geotrellis.raster.io.geotiff.writer.GeoTiffWriter
 import geotrellis.raster.mapalgebra.focal.{Square, TargetCell}
 import geotrellis.raster.mapalgebra.focal.hillshade.Hillshade
+import geotrellis.raster.rasterize._
+import geotrellis.raster.rasterize.polygon._
+import geotrellis.raster.summary.polygonal._
 import geotrellis.spark.io.AttributeStore
 import geotrellis.spark.io.avro.AvroRecordCodec
 import geotrellis.util._
@@ -29,11 +33,14 @@ import geotrellis.vector._
 import geotrellis.vector.io._
 
 import org.apache.hadoop.fs.Path
-import org.apache.spark.{SparkConf, SparkContext}
-import akka.http.scaladsl.server.Directives
+//import org.apache.spark.{SparkConf, SparkContext}
+import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.headers._
+import akka.http.scaladsl.server._
 import akka.actor.ActorRef
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTypes}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import ch.megard.akka.http.cors.CorsDirectives._
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 import spire.syntax.cfor._
@@ -44,15 +51,30 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.ClassTag
 
 trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor {
-  val conf: SparkConf
+  // val conf: SparkConf
   val tileReader: ValueReader[LayerId]
-  val layerReader: FilteringLayerReader[LayerId]
+//  val layerReader: FilteringLayerReader[LayerId]
+  val collectionReader: CollectionLayerReader[LayerId]
   val attributeStore: AttributeStore
   val staticPath: String
 
-  implicit val sc: SparkContext
+  // implicit val sc: SparkContext
 
   import AkkaSystem.materializer
+
+  implicit def rejectionHandler =
+    RejectionHandler.newBuilder().handleAll[MethodRejection] { rejections =>
+      val methods = rejections map (_.supported)
+      lazy val names = methods map (_.name) mkString ", "
+
+      respondWithHeader(Allow(methods)) {
+        options {
+          complete(s"Supported methods : $names.")
+        } ~
+        complete(MethodNotAllowed, s"HTTP method not allowed, supported methods: $names!")
+      }
+    }
+      .result()
 
   def printAnyException[T](f: => T): T= {
     try {
@@ -257,14 +279,97 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
     case _ => "/index.html"
   }
 
+  case class VolumeStats(mean: Double, min: Double, max: Double, volume: Double) {
+    def toJson: JsObject =
+      JsObject(
+        "mean" -> mean.toInt.toJson,
+        "min" -> min.toInt.toJson,
+        "max" -> max.toInt.toJson,
+        "volume" -> volume.toInt.toJson
+      )
+  }
+
+  object VolumeStats {
+    def apply(layer: Seq[(SpatialKey, Tile)] with Metadata[TileLayerMetadata[SpatialKey]], geom: MultiPolygon, cellArea: Double): VolumeStats = {
+      val (zTotal, count, min, max, volume) =
+        layer
+          .polygonalSummary(geom, (0.0, 0L, Double.MaxValue, Double.MinValue, 0.0), new TilePolygonalSummaryHandler[(Double, Long, Double, Double, Double)] {
+            def handlePartialTile(raster: Raster[Tile], intersection: Polygon): (Double, Long, Double, Double, Double) = {
+              var volume = 0.0
+              var min = Double.MaxValue
+              var max = Double.MinValue
+              var zTotal = 0.0
+              var count = 0L
+              val tile = raster.tile
+
+              FractionalRasterizer.foreachCellByPolygon(intersection, raster.rasterExtent)(
+                new FractionCallback {
+                  def callback(col: Int, row: Int, fraction: Double): Unit = {
+                    val z = tile.getDouble(col, row)
+                    if(isData(z)) {
+                      volume += z * cellArea * fraction
+                      zTotal += z
+                      count += 1
+                      if(z < min) { min = z }
+                      if(max < z) { max = z }
+                    }
+                  }
+                }
+              )
+
+              (zTotal, count, min, max, volume)
+            }
+
+            def handleFullTile(tile: Tile): (Double, Long, Double, Double, Double) = {
+              var volume = 0.0
+              var min = Double.MaxValue
+              var max = Double.MinValue
+              var zTotal = 0.0
+              var count = 0L
+
+              tile.foreachDouble { z =>
+                if(isData(z)) {
+                  volume +=  z * cellArea
+                  zTotal += z
+                  count += 1
+                  if(z < min) { min = z }
+                  if(max < z) { max = z }
+                }
+              }
+
+              (zTotal, count, min, max, volume)
+            }
+
+            def combineResults(values: Seq[(Double, Long, Double, Double, Double)]): (Double, Long, Double, Double, Double) =
+              values
+                .foldLeft((0.0, 0L, Double.MaxValue, Double.MinValue, 0.0)) { case ((accZTotal, accCount, accMin, accMax, accVolume), (zTotal, count, min, max, volume)) =>
+                  (
+                    zTotal + accZTotal,
+                    count + accCount,
+                    math.min(min, accMin),
+                    math.max(max, accMax),
+                    volume + accVolume
+                  )
+                }
+          })
+
+      VolumeStats(zTotal / count, min, max, volume)
+    }
+  }
+
   def routes =
     pathPrefix("ping") {
       get {
         complete { "pong" }
       }
-    } ~
-    pathPrefix("test-pc") {
-      // KeyBounds(SpatialKey(106869,205998),SpatialKey(107002,206223))
+    // } ~
+    // pathPrefix("test-pc") {
+    //   // KeyBounds(SpatialKey(106869,205998),SpatialKey(107002,206223))
+    //   complete {
+    //     Future {
+    //       tileReader.reader[SpatialKey, Tile](layerId).read(key)
+    //     }
+    //   }
     } ~
     pathEndOrSingleSlash {
       parameter('n.as[Int] ?) { n =>
@@ -274,49 +379,191 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
     pathPrefix("") {
       getFromDirectory(staticPath)
     } ~
-    pathPrefix("gt") {
-      path("colors")(complete(ColorRampMap.getJson)) ~
-      pathPrefix("stats") {
-        import spray.json._
-        import DefaultJsonProtocol._
+    pathPrefix("stats") {
+      import spray.json._
+      import DefaultJsonProtocol._
 
-        pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
-          parameters('poly ? "") { poly =>
-            val layerId = LayerId(layerName, zoom)
-            val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+      pathPrefix("poly") {
+        pathPrefix("single") {
+          pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
+            // post {
+            //   entity(as[String]) { poly =>
+            parameters('poly) { (poly) =>
+                val layerId = LayerId(layerName, zoom)
+                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
 
-            val rawGeometry = try {
-              poly.parseJson.convertTo[Geometry]
-            } catch {
-              case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+                val cellArea = md.cellSize.width * md.cellSize.height
+
+                val rawGeometry = try {
+                  poly.parseJson.convertTo[Geometry]
+                } catch {
+                  case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+                }
+
+                val geometry = rawGeometry match {
+                  case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
+                  case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
+                  case _ => sys.error(s"BAD GEOMETRY")
+                }
+
+                val result =
+                  collectionReader
+                    .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layerId)
+                    .where(Intersects(geometry))
+                    .result
+
+                val stats = VolumeStats(result, geometry, cellArea)
+
+                // Mean, Min, Max, Volume
+                cors() {
+                  complete {
+                    Future {
+                      JsObject(
+                        "mean" -> stats.mean.toInt.toJson,
+                        "min" -> stats.min.toInt.toJson,
+                        "max" -> stats.max.toInt.toJson
+                      )
+                    }
+                  }
+                }
+//              }
             }
+          }
+        } ~
+        pathPrefix("diff") {
+          pathPrefix(Segment / Segment / IntNumber) { (layer1Name, layer2Name, zoom) =>
+            // post {
+            //   entity(as[String]) { poly =>
+            parameters('poly) { (poly) =>
+                val layer1Id = LayerId(layer1Name, zoom)
+                val layer2Id = LayerId(layer2Name, zoom)
+                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layer1Id)
 
-            val geometry = rawGeometry match {
-              case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
-              case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
-              case _ => sys.error(s"BAD GEOMETRY")
+                val cellArea = md.cellSize.width * md.cellSize.height
+
+                val rawGeometry = try {
+                  poly.parseJson.convertTo[Geometry]
+                } catch {
+                  case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+                }
+
+                val geometry = rawGeometry match {
+                  case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
+                  case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
+                  case _ => sys.error(s"BAD GEOMETRY")
+                }
+
+                val result1 =
+                  collectionReader
+                    .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layer1Id)
+                    .where(Intersects(geometry))
+                    .result
+
+                val result2 =
+                  collectionReader
+                    .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layer2Id)
+                    .where(Intersects(geometry))
+                    .result
+
+                val result = result1.withContext(_ - result2)
+
+                val stats = VolumeStats(result, geometry, cellArea)
+
+                cors() {
+                  complete {
+                    Future {
+                      stats.toJson
+                    }
+                  }
+                }
+              }
             }
+  //        }
+        }
+      } ~
+      pathPrefix("point") {
+        pathPrefix("single") {
+          pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
+            get {
+              parameters('lat.as[Double], 'lng.as[Double]) { (lat, lng) =>
 
-            val result =
-              layerReader
-                .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layerId)
-                .where(Intersects(geometry))
-                .result
+                val layerId = LayerId(layerName, zoom)
+                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
 
-            val stats = result.polygonalHistogram(geometry).statistics()
+                val point = Point(lng, lat).reproject(LatLng, md.crs)
 
-            complete {
-              Future {
-                stats.map { s =>
-                  JsObject(
-                    "mean" -> s.mean.toJson,
-                    "median" -> s.median.toJson,
-                    "mode" -> s.mode.toJson,
-                    "stddev" -> s.stddev.toJson,
-                    "zmax" -> s.zmax.toJson,
-                    "zmin" -> s.zmin.toJson,
-                    "dataCells" -> s.dataCells.toJson
-                  )
+                val key = md.layout.mapTransform(point)
+                val extent = md.layout.mapTransform(key)
+
+                val elevationTile =
+                  Future {
+                    getTile(layerId, key)
+                  }
+
+                val value =
+                  elevationTile.map { tile =>
+                    Raster(tile, extent).getDoubleValueAtPoint(point.x, point.y)
+                  }
+
+                cors() {
+                  complete {
+                    value.map { v =>
+                      JsObject(
+                        "value" -> v.toInt.toJson
+                      )
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } ~
+        pathPrefix("diff") {
+          pathPrefix(Segment / Segment / IntNumber) { (layer1Name, layer2Name, zoom) =>
+            get {
+              parameters('lat.as[Double], 'lng.as[Double]) { (lat, lng) =>
+
+                val layer1Id = LayerId(layer1Name, zoom)
+                val layer2Id = LayerId(layer2Name, zoom)
+                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layer1Id)
+
+                val point = Point(lng, lat).reproject(LatLng, md.crs)
+
+                val key = md.layout.mapTransform(point)
+                val extent = md.layout.mapTransform(key)
+
+                val layer1Tile =
+                  Future {
+                    getTile(layer1Id, key)
+                  }
+
+                val layer2Tile =
+                  Future {
+                    getTile(layer2Id, key)
+                  }
+
+                val values =
+                  for(
+                    t1 <- layer1Tile;
+                    t2 <- layer2Tile
+                  ) yield {
+                    (
+                      Raster(t1, extent).getDoubleValueAtPoint(point.x, point.y),
+                      Raster(t2, extent).getDoubleValueAtPoint(point.x, point.y)
+                    )
+                  }
+
+                cors() {
+                  complete {
+                    Future {
+                      values.map { case (v1, v2) =>
+                        JsObject(
+                          "value1" -> v1.toInt.toJson,
+                          "value2" -> v2.toInt.toJson
+                        )
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -324,270 +571,270 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
         }
       }
     } ~
-      pathPrefix("tms") {
-          pathPrefix("hillshade") {
-            pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-              parameters(
-                'colorRamp ? "blue-to-red",
-                'azimuth.as[Double] ? 315,
-                'altitude.as[Double] ? 45,
-                'zFactor.as[Double] ? 1,
-                'targetCell ? "all",
-                'poly ? ""
-              ) { (colorRamp, azimuth, altitude, zFactor, targetCell, poly) =>
-                val target = targetCell match {
-                  case "nodata" => TargetCell.NoData
-                  case "data" => TargetCell.Data
-                  case _ => TargetCell.All
+    pathPrefix("tms") {
+      pathPrefix("hillshade") {
+        pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
+          parameters(
+            'colorRamp ? "blue-to-red",
+            'azimuth.as[Double] ? 315,
+            'altitude.as[Double] ? 45,
+            'zFactor.as[Double] ? 1,
+            'targetCell ? "all",
+            'poly ? ""
+          ) { (colorRamp, azimuth, altitude, zFactor, targetCell, poly) =>
+            val target = targetCell match {
+              case "nodata" => TargetCell.NoData
+              case "data" => TargetCell.Data
+              case _ => TargetCell.All
+            }
+            val layerId = LayerId(layerName, zoom)
+            val key = SpatialKey(x, y)
+            val keys = populateKeys(key)
+            val kb = keyToBounds(key)
+            val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+            val extent = md.mapTransform(key)
+            val polygon =
+              if(poly.isEmpty) None
+              else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
+
+            complete {
+              val layerGridBounds =
+                md.bounds match {
+                  case k: KeyBounds[SpatialKey] => k.toGridBounds
+                  case _ => sys.error("Layer does not contain valid keybounds")
                 }
-                val layerId = LayerId(layerName, zoom)
-                val key = SpatialKey(x, y)
-                val keys = populateKeys(key)
-                val kb = keyToBounds(key)
-                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
-                val extent = md.mapTransform(key)
-                val polygon =
-                  if(poly.isEmpty) None
-                  else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
+              val tileDimensions =
+                md.layout.tileLayout.tileDimensions
 
-                complete {
-                  val layerGridBounds =
-                    md.bounds match {
-                      case k: KeyBounds[SpatialKey] => k.toGridBounds
-                      case _ => sys.error("Layer does not contain valid keybounds")
+              val result: Future[Option[HttpResponse]] =
+                if(!layerGridBounds.contains(key.col, key.row)) { Future { None } }
+                else {
+                  val elevationTile =
+                    Future {
+                      getTile(layerId, key)
                     }
-                  val tileDimensions =
-                    md.layout.tileLayout.tileDimensions
 
-                  val result: Future[Option[HttpResponse]] =
-                    if(!layerGridBounds.contains(key.col, key.row)) { Future { None } }
-                    else {
-                      val elevationTile =
-                        Future {
-                          getTile(layerId, key)
+                  val hillshadeTile =
+                    getBufferedTile(layerId, key, layerGridBounds, tileDimensions)
+                      .map { case BufferedTile(tile, bounds) =>
+                        printAnyException {
+                          Hillshade(
+                            tile,
+                            Square(1),
+                            Some(bounds),
+                            md.cellSize,
+                            azimuth,
+                            altitude,
+                            zFactor,
+                            target
+                          )
                         }
+                    }
 
-                      val hillshadeTile =
-                        getBufferedTile(layerId, key, layerGridBounds, tileDimensions)
-                          .map { case BufferedTile(tile, bounds) =>
-                            printAnyException {
-                              Hillshade(
-                                tile,
-                                Square(1),
-                                Some(bounds),
-                                md.cellSize,
-                                azimuth,
-                                altitude,
-                                zFactor,
-                                target
-                              )
-                            }
-                        }
+                  val breaks =
+                    attributeStore
+                      .read[Histogram[Double]](LayerId(layerId.name, 0), "histogram")
+                      .asInstanceOf[StreamingHistogram]
+                      .quantileBreaks(50)
 
-                      val breaks =
-                        attributeStore
-                          .read[Histogram[Double]](LayerId(layerId.name, 0), "histogram")
+                  val ramp =
+                    ColorRampMap
+                      .getOrElse(colorRamp, ColorRamps.BlueToRed)
+
+                  val colorMap =
+                    ramp
+                      .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
+
+                  for(
+                    e <- elevationTile;
+                    h <- hillshadeTile
+                  ) yield {
+                    val bytes =
+                      colorWithHillshade(e, h, colorMap)
+                        .renderPng
+                        .bytes
+
+                    Some(HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes)))
+                  }
+                }
+              result
+            }
+          }
+        }
+      } ~
+      pathPrefix("png") {
+        pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
+          parameters('colorRamp ? "blue-to-red", 'poly ? "") { (colorRamp, poly) =>
+            val layerId = LayerId(layerName, zoom)
+            val key = SpatialKey(x, y)
+            val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+            val extent = md.mapTransform(key)
+            val polygon =
+              if(poly.isEmpty) None
+              else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
+
+            complete {
+              Future {
+                val tileOpt =
+                  try {
+                    Some(getTile(layerId, key))
+                  } catch {
+                    case e: ValueNotFoundError =>
+                      None
+                  }
+                tileOpt.map { tile =>
+                  DIMRender(polygon.fold(tile) { p => tile.mask(extent, p.geom) }, layerId, colorRamp)
+                }
+              }
+            }
+          }
+        }
+      } ~
+      pathPrefix("diff-tms") {
+        pathPrefix("png") {
+          pathPrefix(Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, zoom, x, y) =>
+            parameters(
+              'colorRamp ? "green-to-red",
+              'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200",
+              'poly ? ""
+            ) { (colorRamp, pbreaks, poly) =>
+              val (layerId1, layerId2) = LayerId(layerName1, zoom) -> LayerId(layerName2, zoom)
+              val key = SpatialKey(x, y)
+              val (md1, md2) = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1) -> attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2)
+              val extent = md1.mapTransform(key)
+              val polygon =
+                if(poly.isEmpty) None
+                else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md1.crs))
+
+              complete {
+                Future {
+                  val tileOpt =
+                    try {
+                      val tile1 = getTile(layerId1, key)
+                      val tile2 = getTile(layerId2, key)
+
+                      val diff = tile1 - tile2
+
+                      Some(diff)
+                    } catch {
+                      case e: ValueNotFoundError =>
+                        None
+                    }
+                  tileOpt.map { t =>
+                    val tile = polygon.fold(t) { p => t.mask(extent, p.geom) }
+                    println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
+
+                    println(s"pbreaks: ${pbreaks}")
+
+                    /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
+              val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
+
+              println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
+
+                    val breaks = pbreaks match {
+                      case "none" => {
+                        tile
+                          .histogramDouble
                           .asInstanceOf[StreamingHistogram]
                           .quantileBreaks(50)
-
-                      val ramp =
-                        ColorRampMap
-                          .getOrElse(colorRamp, ColorRamps.BlueToRed)
-
-                      val colorMap =
-                        ramp
-                          .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
-
-                      for(
-                        e <- elevationTile;
-                        h <- hillshadeTile
-                      ) yield {
-                        val bytes =
-                          colorWithHillshade(e, h, colorMap)
-                            .renderPng
-                            .bytes
-
-                        Some(HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes)))
                       }
+                      case s => s.split(",").map(_.toDouble)
                     }
-                  result
-                }
-              }
-            }
-          } ~
-          pathPrefix("png") {
-            pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layerName, zoom, x, y) =>
-              parameters('colorRamp ? "blue-to-red", 'poly ? "") { (colorRamp, poly) =>
-                val layerId = LayerId(layerName, zoom)
-                val key = SpatialKey(x, y)
-                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
-                val extent = md.mapTransform(key)
-                val polygon =
-                  if(poly.isEmpty) None
-                  else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md.crs))
 
-                complete {
-                  Future {
-                    val tileOpt =
-                      try {
-                        Some(getTile(layerId, key))
-                      } catch {
-                        case e: ValueNotFoundError =>
-                          None
-                      }
-                    tileOpt.map { tile =>
-                      DIMRender(polygon.fold(tile) { p => tile.mask(extent, p.geom) }, layerId, colorRamp)
-                    }
+                    println(s"breaks: ${breaks.toList}")
+
+                    val ramp =
+                      ColorRampMap
+                        .getOrElse(colorRamp, ColorRamps.BlueToRed)
+                    val colorMap =
+                      ramp
+                        .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
+
+                    //val bytes = tile.renderPng(colorMap)
+                    val bytes = tile.renderPng(ColorRampMap.gr)
+
+                    HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
                   }
                 }
               }
             }
-          } ~
-          pathPrefix("diff-tms") {
-            pathPrefix("png") {
-              pathPrefix(Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, zoom, x, y) =>
-                parameters(
-                  'colorRamp ? "green-to-red",
-                  'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200",
-                  'poly ? ""
-                ) { (colorRamp, pbreaks, poly) =>
-                  val (layerId1, layerId2) = LayerId(layerName1, zoom) -> LayerId(layerName2, zoom)
-                  val key = SpatialKey(x, y)
-                  val (md1, md2) = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1) -> attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2)
-                  val extent = md1.mapTransform(key)
-                  val polygon =
-                    if(poly.isEmpty) None
-                    else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md1.crs))
+          }
+        }
+      } // ~
+      // pathPrefix("diff2-tms") {
+      //   pathPrefix("png") {
+      //     pathPrefix(Segment / Segment / Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, layerName3, layerName4, zoom, x, y) =>
+      //       parameters(
+      //         'colorRamp ? "green-to-red",
+      //         'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200",
+      //         'poly ? ""
+      //       ) { (colorRamp, pbreaks, poly) =>
 
-                  complete {
-                    Future {
-                      val tileOpt =
-                        try {
-                          val tile1 = getTile(layerId1, key)
-                          val tile2 = getTile(layerId2, key)
+      //         val (layerId1, layerId2, layerId3, layerId4) = (LayerId(layerName1, zoom), LayerId(layerName2, zoom), LayerId(layerName3, zoom), LayerId(layerName4, zoom))
+      //         val key = SpatialKey(x, y)
+      //         val (md1, md2, md3, md4) = (attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId3), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId4))
+      //         val extent = md1.mapTransform(key)
+      //         val polygon =
+      //           if(poly.isEmpty) None
+      //           else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md1.crs))
 
-                          val diff = tile1 - tile2
+      //         complete {
+      //           Future {
+      //             val tileOpt =
+      //               try {
+      //                 val tile1 = tileReader.reader[SpatialKey, Tile](layerId1).read(key)
+      //                 val tile2 = tileReader.reader[SpatialKey, Tile](layerId2).read(key)
+      //                 val tile3 = tileReader.reader[SpatialKey, Tile](layerId3).read(key)
+      //                 val tile4 = tileReader.reader[SpatialKey, Tile](layerId4).read(key)
 
-                          Some(diff)
-                        } catch {
-                          case e: ValueNotFoundError =>
-                            None
-                        }
-                      tileOpt.map { t =>
-                        val tile = polygon.fold(t) { p => t.mask(extent, p.geom) }
-                        println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
+      //                 val diff = (tile1 - tile2) - (tile3 - tile4)
 
-                        println(s"pbreaks: ${pbreaks}")
+      //                 Some(diff)
+      //               } catch {
+      //                 case e: ValueNotFoundError =>
+      //                   None
+      //               }
+      //             tileOpt.map { t =>
+      //               val tile = polygon.fold(t) { p => t.mask(extent, p.geom) }
+      //               println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
 
-                        /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
-                  val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
+      //               println(s"pbreaks: ${pbreaks}")
 
-                  println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
+      //               /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
+      //           val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
 
-                        val breaks = pbreaks match {
-                          case "none" => {
-                            tile
-                              .histogramDouble
-                              .asInstanceOf[StreamingHistogram]
-                              .quantileBreaks(50)
-                          }
-                          case s => s.split(",").map(_.toDouble)
-                        }
+      //           println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
 
-                        println(s"breaks: ${breaks.toList}")
+      //               val breaks = pbreaks match {
+      //                 case "none" => {
+      //                   tile
+      //                     .histogramDouble
+      //                     .asInstanceOf[StreamingHistogram]
+      //                     .quantileBreaks(50)
+      //                 }
+      //                 case s => s.split(",").map(_.toDouble)
+      //               }
 
-                        val ramp =
-                          ColorRampMap
-                            .getOrElse(colorRamp, ColorRamps.BlueToRed)
-                        val colorMap =
-                          ramp
-                            .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
+      //               println(s"breaks: ${breaks.toList}")
 
-                        //val bytes = tile.renderPng(colorMap)
-                        val bytes = tile.renderPng(ColorRampMap.gr)
+      //               val ramp =
+      //                 ColorRampMap
+      //                   .getOrElse(colorRamp, ColorRamps.BlueToRed)
+      //               val colorMap =
+      //                 ramp
+      //                   .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
 
-                        HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          } // ~
-          // pathPrefix("diff2-tms") {
-          //   pathPrefix("png") {
-          //     pathPrefix(Segment / Segment / Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, layerName3, layerName4, zoom, x, y) =>
-          //       parameters(
-          //         'colorRamp ? "green-to-red",
-          //         'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200",
-          //         'poly ? ""
-          //       ) { (colorRamp, pbreaks, poly) =>
+      //               val bytes = tile.renderPng(colorMap)
 
-          //         val (layerId1, layerId2, layerId3, layerId4) = (LayerId(layerName1, zoom), LayerId(layerName2, zoom), LayerId(layerName3, zoom), LayerId(layerName4, zoom))
-          //         val key = SpatialKey(x, y)
-          //         val (md1, md2, md3, md4) = (attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId3), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId4))
-          //         val extent = md1.mapTransform(key)
-          //         val polygon =
-          //           if(poly.isEmpty) None
-          //           else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md1.crs))
-
-          //         complete {
-          //           Future {
-          //             val tileOpt =
-          //               try {
-          //                 val tile1 = tileReader.reader[SpatialKey, Tile](layerId1).read(key)
-          //                 val tile2 = tileReader.reader[SpatialKey, Tile](layerId2).read(key)
-          //                 val tile3 = tileReader.reader[SpatialKey, Tile](layerId3).read(key)
-          //                 val tile4 = tileReader.reader[SpatialKey, Tile](layerId4).read(key)
-
-          //                 val diff = (tile1 - tile2) - (tile3 - tile4)
-
-          //                 Some(diff)
-          //               } catch {
-          //                 case e: ValueNotFoundError =>
-          //                   None
-          //               }
-          //             tileOpt.map { t =>
-          //               val tile = polygon.fold(t) { p => t.mask(extent, p.geom) }
-          //               println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
-
-          //               println(s"pbreaks: ${pbreaks}")
-
-          //               /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
-          //           val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
-
-          //           println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
-
-          //               val breaks = pbreaks match {
-          //                 case "none" => {
-          //                   tile
-          //                     .histogramDouble
-          //                     .asInstanceOf[StreamingHistogram]
-          //                     .quantileBreaks(50)
-          //                 }
-          //                 case s => s.split(",").map(_.toDouble)
-          //               }
-
-          //               println(s"breaks: ${breaks.toList}")
-
-          //               val ramp =
-          //                 ColorRampMap
-          //                   .getOrElse(colorRamp, ColorRamps.BlueToRed)
-          //               val colorMap =
-          //                 ramp
-          //                   .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
-
-          //               val bytes = tile.renderPng(colorMap)
-
-          //               HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
-          //             }
-          //           }
-          //         }
-          //       }
-          //     }
-          //   }
-          // }
-      }
+      //               HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
+      //             }
+      //           }
+      //         }
+      //       }
+      //     }
+      //   }
+      // }
+  }
 
   def time[T](msg: String)(f: => T): (T, JsObject) = {
     val s = System.currentTimeMillis

@@ -29,26 +29,72 @@ export default class Analysis extends Component {
         if(!analysisOn) { return null; }
 
         let body = null;
-        if(polygon || point) {
-            body =
-                <div className="analyze-result-wrapper active">
-                    <div className="analyze-result">
-                        <div className="analyze-number">7.2</div>
-                        <div className="label primary" htmlFor="">Average Elevation (ft)</div>
-                    </div>
-                    <div className="analyze-result">
-                        <div className="analyze-number">6.5</div>
-                        <div className="label primary" htmlFor="">Minimum Elevation (ft)</div>
-                    </div>
-                    <div className="analyze-result">
-                        <div className="analyze-number">9.6</div>
-                        <div className="label primary" htmlFor="">Maximum Elevation (ft)</div>
-                    </div>
-                    <div className="analyze-result">
-                        <div className="analyze-number">10.2</div>
-                        <div className="label primary" htmlFor="">Volume Change (sqft)</div>
-                    </div>
-                </div>
+        if(results) {
+            if(results.type == 'point') {
+                if(results.value2) {
+                    // Diff
+                    body =
+                        <div className="analyze-result-wrapper active">
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.value1}</div>
+                                <div className="label primary" htmlFor="">Snow On Elevation (m)</div>
+                            </div>
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.value2}</div>
+                                <div className="label primary" htmlFor="">Snow Off Elevation (m)</div>
+                            </div>
+                        </div>
+                } else {
+                    // Single layer
+                    body =
+                        <div className="analyze-result-wrapper active">
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.value}</div>
+                                <div className="label primary" htmlFor="">Elevation (m)</div>
+                            </div>
+                        </div>
+                }
+            } else { // polygon
+                if(results.volume) {
+                    // Diff
+                    body =
+                        <div className="analyze-result-wrapper active">
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.mean}</div>
+                                <div className="label primary" htmlFor="">Average Difference (m)</div>
+                            </div>
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.min}</div>
+                                <div className="label primary" htmlFor="">Minimum Difference (m)</div>
+                            </div>
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.max}</div>
+                                <div className="label primary" htmlFor="">Maximum Differnce (m)</div>
+                            </div>
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.volume}</div>
+                                <div className="label primary" htmlFor="">Volume Change (m<sup>3</sup>)</div>
+                            </div>
+                        </div>
+                } else {
+                    // Single layer
+                    body =
+                        <div className="analyze-result-wrapper active">
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.mean}</div>
+                                <div className="label primary" htmlFor="">Average Elevation (m)</div>
+                            </div>
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.min}</div>
+                                <div className="label primary" htmlFor="">Minimum Elevation (m)</div>
+                            </div>
+                            <div className="analyze-result">
+                                <div className="analyze-number">{results.max}</div>
+                                <div className="label primary" htmlFor="">Maximum Elevation (m)</div>
+                            </div>
+                        </div>
+                }
+            }
         } else {
             body =
                 <div className="analyze-description active">

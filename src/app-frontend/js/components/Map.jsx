@@ -16,6 +16,11 @@ import 'leaflet-fullscreen';
 import DrawToolbar from './DrawToolbar';
 
 import {
+    setAnalysisOn,
+    setZoom
+} from './actions';
+
+import {
     LayerNames as LN,
     polygonDefaults,
 } from '../common/constants.js';
@@ -39,8 +44,14 @@ export default class Map extends Component {
          * leafletMap.on('fullscreenchange', this.adjustMap);*/
     }
 
-    componentWillReceiveProps({ center }) {
+    componentWillReceiveProps({ center, zoom }) {
         const hasNewCenter = !isEqual(center, this.props.center);
+
+        // Hack, there should be a way to update the zoom when it changes.
+        // Check if the zoom is different and set it.
+        if(zoom != this.map.leafletElement.getZoom()) {
+            this.props.dispatch(setZoom(this.map.leafletElement.getZoom()));
+        }
 
         if (hasNewCenter) {
             this.adjustMap();
@@ -81,7 +92,6 @@ export default class Map extends Component {
                 polygon,
                 point } = this.props;
 
-        console.log("IN MAP: " + targetLayerName)
         var layer = targetLayerName == "SNOW-ON" ? "mar10idw" : "jul10idw"
         var colorRamp = "blue-to-red"
 

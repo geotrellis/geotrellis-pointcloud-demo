@@ -167,7 +167,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
 --layerName,jul10tin,\
---numPartitions,50000,\
+--numPartitions,${PARTITION_COUNT},\
 --persist,true,\
 --pyramid,true,\
 --zoomed,true\
@@ -191,7 +191,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
 --layerName,mar10tin,\
---numPartitions,50000,\
+--numPartitions,${PARTITION_COUNT},\
 --persist,true,\
 --pyramid,true,\
 --zoomed,true\
