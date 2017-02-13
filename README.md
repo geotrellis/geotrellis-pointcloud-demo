@@ -21,6 +21,15 @@ Clone the project, `cd` into the directory, then run `./scripts/setup.sh` to cre
 
 Note: this will destroy the VM's existing Docker container before rebuilding it.
 
+#### To run just the UI server
+
+```
+scripts/setup.sh
+vagrant up
+vagrant ssh
+scripts/app-server.sh
+```
+
 #### Downloading test data
 
 `make load-local` will download the necessary data.
