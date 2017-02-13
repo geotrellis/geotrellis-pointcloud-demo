@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 
-import { Slider, Button, Tabs, TabList, TabPanel, Tab } from "@blueprintjs/core";
+import { Spinner, Slider, Button, Tabs, TabList, TabPanel, Tab } from "@blueprintjs/core";
 
 import {
     setAnalysisOn,
@@ -24,12 +24,20 @@ export default class Analysis extends Component {
             analysisOn,
             polygon,
             point,
+            isFetching,
             results } = this.props;
 
         if(!analysisOn) { return null; }
 
         let body = null;
-        if(results) {
+        if(isFetching) {
+            body =
+            <div className="analyze-result-wrapper active">
+                <div className="analyze-spinner">
+                    <Spinner className=".pt-large"/>
+                </div>
+              </div>
+        } else if(results) {
             if(results.type == 'point') {
                 if(results.value2) {
                     // Diff

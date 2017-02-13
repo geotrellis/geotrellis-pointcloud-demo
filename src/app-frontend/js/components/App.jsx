@@ -163,6 +163,7 @@ class App extends Component {
                         polygon={analysis.polygon}
                         point={analysis.point}
                         results={analysis.results}
+                        isFetching={analysis.isFetching}
                     />
 
                     <Map className="map"
