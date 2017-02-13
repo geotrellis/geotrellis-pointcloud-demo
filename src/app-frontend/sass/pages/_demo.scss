@@ -84,13 +84,13 @@
     }
   }
   .analyze-result {
-    margin: 1rem -1rem;
+    margin: 1rem -1rem -1rem;
     padding: 1rem;
     border-top: 1px solid #404344;
     label,
     .label {
       text-align: center;
-      margin-top: -0.7rem;
+      margin-top: 0;
       font-size: 1.3rem;
     }
   }
@@ -110,6 +110,9 @@
   margin: 1rem -1rem;
   padding: 1rem;
   border-top: 1px solid #404344;
+  & > p {
+    margin-top: 1rem;
+  }
   &:not(.active) {
     display: none;
   }
@@ -125,7 +128,7 @@
   background-color: $brand-primary;
   position: absolute;
   left: 30rem;
-  margin-left: 1rem;
+  margin-left: 1.6rem;
   top: 0;
   margin-top: 1rem;
   z-index: 2500;
@@ -134,6 +137,7 @@
   font-size: 1.8rem;
   border: 0;
   border-radius: 3px;
+  font-weight: 800;
   // Added because I thought it looked good over the map (like leaflet draw buttons).
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.74);
 
@@ -159,6 +163,7 @@ header {
   }
   .analyze & {
     padding: 1.4rem 1rem;
+    margin-bottom: -1.8rem;
 
     .button-cancel {
       position: absolute;
@@ -281,6 +286,16 @@ header {
   }
 }
 
+path.leaflet-clickable {
+  stroke: #1D2123;
+  stroke-opacity: 1;
+  fill: #1D2123;
+}
+
+.leaflet-draw-guide-dash {
+  background-color: #1D2123 !important;
+}
+
 @import
   "../node_modules/leaflet-draw/dist/leaflet.draw.css";
 
@@ -306,6 +321,8 @@ header {
             margin-right: 10px;
             padding: 2px 10px;
             box-shadow: 0 0 6px rgba(0, 0, 0, 0.74);
+            font-family: $body-font-family;
+            font-size: $font-size-h5;
 
             &.leaflet-draw-draw-geom {
                 color: #f5f8fa;
@@ -316,19 +333,21 @@ header {
                     color: #B5BABB;
                     background-color: #465256 !important;
                     border-color: #465256 !important;
+                    font-weight: 400 !important;
                 }
             }
 
             &.leaflet-draw-edit-remove {
                 color: #f5f8fa;
                 background-color: $brand-primary;
-                border-color: #ac2925;
+                border-color: transparent;
                 background-image: none;
 
                 &.leaflet-disabled {
-                    color: #B5BABB;
-                    background-color: #465256 !important;
-                    border-color: transparent;
+                  color: #B5BABB;
+                  background-color: #465256 !important;
+                  border-color: transparent;
+                  font-weight: 400 !important;
                 }
             }
         }
