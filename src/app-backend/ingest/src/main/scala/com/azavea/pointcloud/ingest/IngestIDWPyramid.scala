@@ -13,6 +13,7 @@ import geotrellis.proj4.{CRS, LatLng}
 import geotrellis.raster.io._
 import geotrellis.raster.io.geotiff.GeoTiff
 import geotrellis.raster._
+import geotrellis.raster.resample.Bilinear
 import geotrellis.spark._
 import geotrellis.spark.io._
 import geotrellis.spark.io.hadoop._
@@ -53,13 +54,13 @@ object IngestIDWPyramid {
         if(opts.nonS3Input)
           HadoopPointCloudRDD(
             new Path(opts.inputPath),
-            HadoopPointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
+            HadoopPointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline, dimTypes = Option(List("X", "Y", "Z")))
           ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache()
         else
           S3PointCloudRDD(
             bucket = opts.S3InputPath._1,
             prefix = opts.S3InputPath._2,
-            S3PointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
+            S3PointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline, dimTypes = Option(List("X", "Y", "Z")))
           ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache
 
       val (extent, crs) =
@@ -106,21 +107,21 @@ object IngestIDWPyramid {
 
       val tiles =
         PointCloudToDem(
-          tiled, opts.cellSize,
+          tiled, 256 -> 256,
           PointToGrid.Options(cellType = FloatConstantNoDataCellType)
         )
 
       val layer = ContextRDD(tiles, md)
 
-      layer.cache()
+      // layer.cache()
 
       def buildPyramid(zoom: Int, rdd: TileLayerRDD[SpatialKey])
                       (sink: (TileLayerRDD[SpatialKey], Int) => Unit): List[(Int, TileLayerRDD[SpatialKey])] = {
         println(s":::buildPyramid: $zoom")
         if (zoom >= opts.minZoom) {
-          rdd.cache()
+          // rdd.cache()
           sink(rdd, zoom)
-          val pyramidLevel @ (nextZoom, nextRdd) = Pyramid.up(rdd, layoutScheme, zoom)
+          val pyramidLevel @ (nextZoom, nextRdd) = Pyramid.up(rdd, layoutScheme, zoom, Pyramid.Options(Bilinear))
           pyramidLevel :: buildPyramid(nextZoom, nextRdd)(sink)
         } else {
           sink(rdd, zoom)
