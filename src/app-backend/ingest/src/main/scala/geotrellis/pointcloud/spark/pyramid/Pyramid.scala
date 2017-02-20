@@ -98,7 +98,7 @@ object Pyramid extends LazyLogging {
           }
 
           newKey -> arr
-        }
+        }.filter { _._2.length > 2 }
     }
 
     nextZoom -> new ContextRDD(nextRdd, nextMetadata)

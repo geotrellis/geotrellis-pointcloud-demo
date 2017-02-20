@@ -1,27 +1,19 @@
 package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
-import io.pdal._
-
-import geotrellis.pointcloud.pipeline._
 import geotrellis.pointcloud.spark._
 import geotrellis.pointcloud.spark.io._
-import geotrellis.pointcloud.spark.io.hadoop._
-import geotrellis.pointcloud.spark.io.s3._
 import geotrellis.pointcloud.spark.pyramid._
 import geotrellis.proj4.CRS
 import geotrellis.raster._
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.spark.io.hadoop._
 import geotrellis.spark.io.index.ZCurveKeyIndexMethod
 import geotrellis.spark.io.kryo.KryoRegistrator
-import geotrellis.spark.io.s3.S3LayerWriter
 import geotrellis.spark.tiling._
 import geotrellis.util._
 import geotrellis.vector._
 
-import org.apache.hadoop.fs.Path
 import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
@@ -30,9 +22,9 @@ import com.vividsolutions.jts.geom.Coordinate
 
 import scala.collection.mutable
 
-object IngestPCPyramid {
+object IngestPCPyramid extends Ingest {
   def main(args: Array[String]): Unit = {
-    val opts      = IngestConf.parse(args)
+    implicit val opts = IngestConf.parse(args)
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
 
     val conf = new SparkConf()
@@ -45,22 +37,7 @@ object IngestPCPyramid {
     implicit val sc = new SparkContext(conf)
 
     try {
-      val pipeline = Read("", opts.inputCrs) ~
-        ReprojectionFilter(opts.destCrs) ~
-        opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
-
-      val source =
-        if(opts.nonS3Input)
-          HadoopPointCloudRDD(
-            new Path(opts.inputPath),
-            HadoopPointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
-          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache()
-        else
-          S3PointCloudRDD(
-            bucket = opts.S3InputPath._1,
-            prefix = opts.S3InputPath._2,
-            S3PointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline)
-          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache
+      val source = getSource
 
       val (extent, crs) =
         source
@@ -132,9 +109,7 @@ object IngestPCPyramid {
       }
 
       if(opts.persist) {
-        val writer =
-          if(opts.nonS3Catalog) HadoopLayerWriter(new Path(opts.catalogPath))
-          else S3LayerWriter(opts.S3CatalogPath._1, opts.S3CatalogPath._2)
+        val writer = getWriter
 
         if (opts.pyramid) {
           buildPyramid(zoom, layer) { (rdd, zoom) =>

@@ -2,8 +2,6 @@ package com.azavea.pointcloud.ingest
 
 import com.azavea.pointcloud.ingest.conf.IngestConf
 
-import geotrellis.pointcloud.pipeline._
-import geotrellis.pointcloud.spark.io.hadoop._
 import geotrellis.pointcloud.spark.triangulation._
 import geotrellis.raster.io._
 import geotrellis.raster.io.geotiff.GeoTiff
@@ -16,10 +14,7 @@ import geotrellis.spark.io.kryo.KryoRegistrator
 import geotrellis.spark.pyramid.Pyramid
 import geotrellis.spark.tiling._
 import geotrellis.util._
-import geotrellis.proj4.{CRS, LatLng}
-import geotrellis.pointcloud.spark.io.PointCloudHeader
-import geotrellis.pointcloud.spark.io.s3.S3PointCloudRDD
-import geotrellis.spark.io.s3.S3LayerWriter
+import geotrellis.proj4.CRS
 import geotrellis.raster.resample.Bilinear
 
 import com.vividsolutions.jts.geom.Coordinate
@@ -31,20 +26,9 @@ import spire.syntax.cfor._
 
 import scala.collection.mutable
 
-object IngestTINPyramid {
-  def time[T](msg: String)(f: => T): T = {
-    val s = System.currentTimeMillis
-    val result = f
-    val e = System.currentTimeMillis
-    val t = "%,d".format(e - s)
-    println("=================TIMING RESULT=================")
-    println(s"$msg (in $t ms)")
-    println("==============================================")
-    result
-  }
-
+object IngestTINPyramid extends Ingest {
   def main(args: Array[String]): Unit = {
-    val opts      = IngestConf.parse(args)
+    implicit val opts = IngestConf.parse(args)
     println(s":::opts: ${opts}")
 
     // val chunkPath = System.getProperty("user.dir") + "/chunks/"
@@ -59,22 +43,7 @@ object IngestTINPyramid {
     implicit val sc = new SparkContext(conf)
 
     try {
-      val pipeline = Read("", opts.inputCrs) ~
-        ReprojectionFilter(opts.destCrs) ~
-        opts.maxValue.map { v => RangeFilter(Some(s"Z[0:$v]")) }
-
-      val source =
-        if(opts.nonS3Input)
-          HadoopPointCloudRDD(
-            new Path(opts.inputPath),
-            HadoopPointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline, dimTypes = Option(List("X", "Y", "Z")))
-          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache()
-        else
-          S3PointCloudRDD(
-            bucket = opts.S3InputPath._1,
-            prefix = opts.S3InputPath._2,
-            S3PointCloudRDD.Options.DEFAULT.copy(pipeline = pipeline, dimTypes = Option(List("X", "Y", "Z")))
-          ).map { case (header, pc) => (header: PointCloudHeader, pc) } //.cache
+      val source = getSource
 
       val (extent, crs) =
         source
@@ -166,9 +135,7 @@ object IngestTINPyramid {
       }
 
       if(opts.persist) {
-        val writer =
-          if(opts.nonS3Catalog) HadoopLayerWriter(new Path(opts.catalogPath))
-          else S3LayerWriter(opts.S3CatalogPath._1, opts.S3CatalogPath._2)
+        val writer = getWriter
         val attributeStore = writer.attributeStore
 
         var savedHisto = false
