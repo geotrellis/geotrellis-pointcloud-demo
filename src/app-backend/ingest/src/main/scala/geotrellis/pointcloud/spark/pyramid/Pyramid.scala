@@ -4,17 +4,47 @@ import geotrellis.spark._
 import geotrellis.spark.tiling._
 import geotrellis.raster._
 import geotrellis.util._
-
+import geotrellis.vector.triangulation.DelaunayTriangulation
 import org.apache.spark.Partitioner
 import org.apache.spark.rdd._
 import com.typesafe.scalalogging.LazyLogging
 import com.vividsolutions.jts.geom.Coordinate
-import geotrellis.vector.triangulation.DelaunayTriangulation
-import spire.syntax.cfor.cfor
+import java.io._
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.charset.StandardCharsets
+import java.nio.file.StandardOpenOption
 
+import geotrellis.spark.io.hadoop.HdfsUtils
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
+
+import scala.collection.IterableLike
+import scala.collection.generic.CanBuildFrom
 import scala.reflect.ClassTag
 
 object Pyramid extends LazyLogging {
+  class RichCollection[A, Repr](xs: IterableLike[A, Repr]){
+    def distinctBy[B, That](f: A => B)(implicit cbf: CanBuildFrom[Repr, A, That]) = {
+      val builder = cbf(xs.repr)
+      val i = xs.iterator
+      var set = Set[B]()
+      while (i.hasNext) {
+        val o = i.next
+        val b = f(o)
+        if (!set(b)) {
+          set += b
+          builder += o
+        }
+      }
+      builder.result
+    }
+  }
+
+  implicit def toRich[A, Repr](xs: IterableLike[A, Repr]): RichCollection[A, Repr] = new RichCollection(xs)
+
+  type V = Array[Coordinate]
+  
   case class Options(decimation: Double = 0.75, partitioner: Option[Partitioner] = None)
   object Options {
     def DEFAULT = Options()
@@ -26,12 +56,14 @@ object Pyramid extends LazyLogging {
   def up[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K, Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     zoom: Int,
     options: Options
-   ): (Int, RDD[(K,  Array[Coordinate])] with Metadata[M]) = {
+   ): (Int, RDD[(K, V)] with Metadata[M]) = {
     val Options(decimation, partitioner) = options
+
+    //val hadoopConfiguration = rdd.sparkContext.hadoopConfiguration
 
     val sourceLayout = rdd.metadata.getComponent[LayoutDefinition]
     val sourceBounds = rdd.metadata.getComponent[Bounds[K]]
@@ -69,9 +101,9 @@ object Pyramid extends LazyLogging {
         .setComponent(nextKeyBounds)
 
     // Functions for combine step
-    def createTiles(tile: (K,  Array[Coordinate])): Seq[(K,  Array[Coordinate])]                             = Seq(tile)
-    def mergeTiles1(tiles: Seq[(K,  Array[Coordinate])], tile: (K,  Array[Coordinate])): Seq[(K,  Array[Coordinate])]         = tiles :+ tile
-    def mergeTiles2(tiles1: Seq[(K,  Array[Coordinate])], tiles2: Seq[(K,  Array[Coordinate])]): Seq[(K,  Array[Coordinate])] = tiles1 ++ tiles2
+    def createTiles(tile: (K, V)): Seq[(K, V)]                             = Seq(tile)
+    def mergeTiles1(tiles: Seq[(K, V)], tile: (K, V)): Seq[(K, V)]         = tiles :+ tile
+    def mergeTiles2(tiles1: Seq[(K, V)], tiles2: Seq[(K, V)]): Seq[(K, V)] = tiles1 ++ tiles2
 
     val nextRdd = {
       val transformedRdd = rdd
@@ -83,18 +115,43 @@ object Pyramid extends LazyLogging {
 
       partitioner
         .fold(transformedRdd.combineByKey(createTiles, mergeTiles1, mergeTiles2))(transformedRdd.combineByKey(createTiles _, mergeTiles1 _, mergeTiles2 _, _))
-        .map { case (newKey: K, seq: Seq[(K,  Array[Coordinate])]) =>
-          val pts = seq.flatMap(_._2).toArray
+        .map { case (newKey: K, seq: Seq[(K, V)]) =>
+          val pts = seq.flatMap(_._2)/*.distinctBy { c => (c.x, c.y, c.z) }*/.toArray
           val length = pts.length
           val by = (decimation * length).toInt
-          val newLength = length - by
-          val arr = new Array[Coordinate](newLength)
           val dt = DelaunayTriangulation(pts)
-          dt.decimate(by)
+          try {
+            dt.decimate(by)
+          } catch {
+            case e: Exception => {
+              println("==================")
+              println(s"dt.decimate($by)")
+              println(s"pts.length: ${pts.length}")
+              println("==================")
+              val file = new File(s"/tmp/pts${pts.length}.txt")
+              val fileWriter = new FileWriter(file)
+              val printWriter = new PrintWriter(fileWriter)
+              pts.foreach { c => printWriter.println(s"${c.x}, ${c.y}, ${c.z}") }
+              fileWriter.flush()
+              fileWriter.close()
+              HdfsUtils.copyPath(new Path(s"file:///tmp/pts${pts.length}.txt"), new Path(s"s3://geotrellis-test/decimation-debug/pts${pts.length}.txt"), new Configuration)
+              //println(pts.toList.map { c => s"new Coordinate(${c.x}, ${c.y}, ${c.z})" })
+              println("==================")
+              val sw = new StringWriter
+              e.printStackTrace(new PrintWriter(sw))
+              println(sw.toString)
+              println("==================")
+              throw e
+            }
+          }
 
           val ps = dt.pointSet
-          cfor(0)(_ < newLength, _ + 1) { i =>
-            arr(i) = ps.getCoordinate(i)
+          val vs = dt.halfEdgeTable.allVertices().toArray
+          val arr = new Array[Coordinate](vs.length)
+          var j = 0
+          vs.foreach { i =>
+            arr(j) = ps.getCoordinate(i)
+            j += 1
           }
 
           newKey -> arr
@@ -107,21 +164,21 @@ object Pyramid extends LazyLogging {
   def up[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     zoom: Int
-   ): (Int, RDD[(K,  Array[Coordinate])] with Metadata[M]) =
+   ): (Int, RDD[(K, V)] with Metadata[M]) =
     up(rdd, layoutScheme, zoom, Options.DEFAULT)
 
   def levelStream[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int,
     endZoom: Int,
     options: Options
-   ): Stream[(Int, RDD[(K,  Array[Coordinate])] with Metadata[M])] =
+   ): Stream[(Int, RDD[(K, V)] with Metadata[M])] =
     (startZoom, rdd) #:: {
       if (startZoom > endZoom) {
         val (nextZoom, nextRdd) = Pyramid.up(rdd, layoutScheme, startZoom, options)
@@ -134,42 +191,42 @@ object Pyramid extends LazyLogging {
   def levelStream[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int,
     endZoom: Int
-   ): Stream[(Int, RDD[(K,  Array[Coordinate])] with Metadata[M])] =
+   ): Stream[(Int, RDD[(K, V)] with Metadata[M])] =
     levelStream(rdd, layoutScheme, startZoom, endZoom, Options.DEFAULT)
 
   def levelStream[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int,
     options: Options
-   ): Stream[(Int, RDD[(K,  Array[Coordinate])] with Metadata[M])] =
+   ): Stream[(Int, RDD[(K, V)] with Metadata[M])] =
     levelStream(rdd, layoutScheme, startZoom, 0, options)
 
   def levelStream[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int
-   ): Stream[(Int, RDD[(K,  Array[Coordinate])] with Metadata[M])] =
+   ): Stream[(Int, RDD[(K, V)] with Metadata[M])] =
     levelStream(rdd, layoutScheme, startZoom, Options.DEFAULT)
 
   def upLevels[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int,
     endZoom: Int,
     options: Options
-   )(f: (RDD[(K,  Array[Coordinate])] with Metadata[M], Int) => Unit): RDD[(K,  Array[Coordinate])] with Metadata[M] = {
-    def runLevel(thisRdd: RDD[(K,  Array[Coordinate])] with Metadata[M], thisZoom: Int): (RDD[(K,  Array[Coordinate])] with Metadata[M], Int) =
+   )(f: (RDD[(K, V)] with Metadata[M], Int) => Unit): RDD[(K, V)] with Metadata[M] = {
+    def runLevel(thisRdd: RDD[(K, V)] with Metadata[M], thisZoom: Int): (RDD[(K, V)] with Metadata[M], Int) =
       if (thisZoom > endZoom) {
         f(thisRdd, thisZoom)
         val (nextZoom, nextRdd) = Pyramid.up(thisRdd, layoutScheme, thisZoom, options)
@@ -185,30 +242,30 @@ object Pyramid extends LazyLogging {
   def upLevels[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int,
     endZoom: Int
-   )(f: (RDD[(K,  Array[Coordinate])] with Metadata[M], Int) => Unit): RDD[(K,  Array[Coordinate])] with Metadata[M] =
+   )(f: (RDD[(K, V)] with Metadata[M], Int) => Unit): RDD[(K, V)] with Metadata[M] =
     upLevels(rdd, layoutScheme, startZoom, endZoom, Options.DEFAULT)(f)
 
   def upLevels[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int,
     options: Options
-   )(f: (RDD[(K,  Array[Coordinate])] with Metadata[M], Int) => Unit): RDD[(K,  Array[Coordinate])] with Metadata[M] =
+   )(f: (RDD[(K, V)] with Metadata[M], Int) => Unit): RDD[(K, V)] with Metadata[M] =
     upLevels(rdd, layoutScheme, startZoom, 0, options)(f)
 
   def upLevels[
     K: SpatialComponent: ClassTag,
     M: Component[?, LayoutDefinition]: Component[?, Bounds[K]]
-  ](rdd: RDD[(K,  Array[Coordinate])] with Metadata[M],
+  ](rdd: RDD[(K, V)] with Metadata[M],
     layoutScheme: LayoutScheme,
     startZoom: Int
-   )(f: (RDD[(K,  Array[Coordinate])] with Metadata[M], Int) => Unit): RDD[(K,  Array[Coordinate])] with Metadata[M] =
+   )(f: (RDD[(K, V)] with Metadata[M], Int) => Unit): RDD[(K, V)] with Metadata[M] =
     upLevels(rdd, layoutScheme, startZoom, Options.DEFAULT)(f)
 }
 
