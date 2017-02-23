@@ -44,7 +44,7 @@ object Pyramid extends LazyLogging {
   implicit def toRich[A, Repr](xs: IterableLike[A, Repr]): RichCollection[A, Repr] = new RichCollection(xs)
 
   type V = Array[Coordinate]
-  
+
   case class Options(decimation: Double = 0.75, partitioner: Option[Partitioner] = None)
   object Options {
     def DEFAULT = Options()
@@ -123,7 +123,7 @@ object Pyramid extends LazyLogging {
           try {
             dt.decimate(by)
           } catch {
-            case e: Exception => {
+            case e: Throwable => {
               println("==================")
               println(s"dt.decimate($by)")
               println(s"pts.length: ${pts.length}")
@@ -134,7 +134,7 @@ object Pyramid extends LazyLogging {
               pts.foreach { c => printWriter.println(s"${c.x}, ${c.y}, ${c.z}") }
               fileWriter.flush()
               fileWriter.close()
-              HdfsUtils.copyPath(new Path(s"file:///tmp/pts${pts.length}.txt"), new Path(s"s3://geotrellis-test/decimation-debug/pts${pts.length}.txt"), new Configuration)
+              HdfsUtils.copyPath(new Path(s"file:///tmp/pts${pts.length}.txt"), new Path(s"s3://geotrellis-test/decimation-debug/v3/pts${pts.length}.txt"), new Configuration)
               //println(pts.toList.map { c => s"new Coordinate(${c.x}, ${c.y}, ${c.z})" })
               println("==================")
               val sw = new StringWriter
