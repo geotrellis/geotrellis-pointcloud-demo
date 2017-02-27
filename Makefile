@@ -288,6 +288,8 @@ spark-submit,--master,yarn-cluster,\
 --conf,spark.dynamicAllocation.enabled=true,\
 --conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
 --conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.driver.extraJavaOptions='-XX:MaxJavaStackTraceDepth=-1',\
+--conf,spark.executor.extraJavaOptions='-XX:MaxJavaStackTraceDepth=-1',\
 ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
 --catalogPath,${S3_CATALOG},\

@@ -5,23 +5,19 @@ import geotrellis.spark.tiling._
 import geotrellis.raster._
 import geotrellis.util._
 import geotrellis.vector.triangulation.DelaunayTriangulation
+import geotrellis.spark.io.hadoop.HdfsUtils
+
 import org.apache.spark.Partitioner
 import org.apache.spark.rdd._
 import com.typesafe.scalalogging.LazyLogging
 import com.vividsolutions.jts.geom.Coordinate
-import java.io._
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.charset.StandardCharsets
-import java.nio.file.StandardOpenOption
-
-import geotrellis.spark.io.hadoop.HdfsUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 
 import scala.collection.IterableLike
 import scala.collection.generic.CanBuildFrom
 import scala.reflect.ClassTag
+import java.io._
 
 object Pyramid extends LazyLogging {
   class RichCollection[A, Repr](xs: IterableLike[A, Repr]){
@@ -116,7 +112,7 @@ object Pyramid extends LazyLogging {
       partitioner
         .fold(transformedRdd.combineByKey(createTiles, mergeTiles1, mergeTiles2))(transformedRdd.combineByKey(createTiles _, mergeTiles1 _, mergeTiles2 _, _))
         .map { case (newKey: K, seq: Seq[(K, V)]) =>
-          val pts = seq.flatMap(_._2)/*.distinctBy { c => (c.x, c.y, c.z) }*/.toArray
+          val pts = seq.flatMap(_._2) /*.distinctBy { c => (c.x, c.y, c.z) }*/ .toArray
           val length = pts.length
           val by = (decimation * length).toInt
           val dt = DelaunayTriangulation(pts)
