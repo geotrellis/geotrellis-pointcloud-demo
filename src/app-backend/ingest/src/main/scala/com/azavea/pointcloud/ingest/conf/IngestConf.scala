@@ -22,7 +22,8 @@ object IngestConf {
     inputCrs: Option[String] = None,
     testOutput: Option[String] = None,
     outputBackend: String = "hadoop",
-    inputBackend: String = "hadoop"
+    inputBackend: String = "hadoop",
+    decimation: Double = 0.75
   ) {
     lazy val isS3Input = try {
       val S3InputFormat.S3UrlRx(_, _, _, _) = inputPath
@@ -84,6 +85,8 @@ object IngestConf {
                |        maxValue is an integer value [default: 400]
                |  --testOutput <value>
                |        testOutput is a non-empty String
+               | --decimation <value>
+               |        decimation is a double value [default: 0.75]
                |  --help
                |        prints this usage text
              """.stripMargin
@@ -121,6 +124,8 @@ object IngestConf {
         nextOption(opts.copy(maxValue = Some(value.toInt)), tail)
       case "--testOutput" :: value :: tail =>
         nextOption(opts.copy(testOutput = Some(value)), tail)
+      case "--decimation" :: value :: tail =>
+        nextOption(opts.copy(decimation = value.toDouble), tail)
       case "--help" :: tail => {
         println(help)
         sys.exit(1)
