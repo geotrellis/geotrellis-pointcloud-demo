@@ -36,14 +36,14 @@ class App extends Component {
         } = this.props;
 
         return (
-            <div className="flex-expand-column height-100percent mode-detail">
+            <div className="flex-expand-column height-100percent mode-detail pt-dark">
                 <main>
                     <button className="button-analyze">Analyze</button>
                     <div className="sidebar options">
                         <Tabs>
                             <TabList className="main-tabs">
-                                <Tab>Single Layer</Tab>
-                                <Tab>Change Detection</Tab>
+                                <Tab><span>Single Layer</span></Tab>
+                                <Tab><span>Change Detection</span></Tab>
                             </TabList>
                             <TabPanel>
                                 <SingleLayer
@@ -81,18 +81,15 @@ class App extends Component {
                             </button>
                         </header>
                         <div className="draw-buttons">
-                            <div className="button-group">
-                                <button className="button active">Draw</button>
-                                <button className="button">Point</button>
+                            <div className="pt-button-group pt-fill">
+                                <button className="pt-button pt-active">Draw</button>
+                                <button className="pt-button">Point</button>
                             </div>
                         </div>
                         <div className="content">
                             <div className="analyze-description active">
-                                <p>Click on the "Draw" button to draw a polygon and
-                                    calculate statistics over that area.</p>
-                                <p>Click on the "Point" button to select a point
-                                    on the map and see statistics for that
-                                    location.</p>
+                                <p>Draw a polygon or select a point on the map to calculate
+                                statistics for that location.</p>
 
                             </div>
                             <div className="analyze-result-wrapper active">

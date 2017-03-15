@@ -276,6 +276,54 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --numPartitions,5000\
 ] | cut -f2 | tee last-step-id.txt
 
+ingest-pc-mar10-pyramid:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestPCPyramid",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestPCPyramid,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.driver.extraJavaOptions='-XX:MaxJavaStackTraceDepth=-1',\
+--conf,spark.executor.extraJavaOptions='-XX:MaxJavaStackTraceDepth=-1',\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Mar_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,mar10pcpyr,\
+--numPartitions,50000,\
+--persist,true,\
+--pyramid,true,\
+--zoomed,true\
+] | cut -f2 | tee last-step-id.txt
+
+ingest-pc-jul10-pyramid:
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
+--steps Type=CUSTOM_JAR,Name="IngestPCPyramid",Jar=command-runner.jar,Args=[\
+spark-submit,--master,yarn-cluster,\
+--class,com.azavea.pointcloud.ingest.IngestPCPyramid,\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
+--executor-memory,${EXECUTOR_MEMORY},\
+--executor-cores,${EXECUTOR_CORES},\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
+${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
+--inputPath,${S3_POINTCLOUD_PATH}/JRB_10_Jul_subset/,\
+--catalogPath,${S3_CATALOG},\
+--inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
+--layerName,jul10pcpyr,\
+--numPartitions,50000,\
+--persist,true,\
+--pyramid,true,\
+--zoomed,true\
+] | cut -f2 | tee last-step-id.txt
+
 run-server: ${POINTCLOUD_SERVER_ASSEMBLY}
 	aws emr put --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem" \
 	--src ${STATIC} --dest /tmp
