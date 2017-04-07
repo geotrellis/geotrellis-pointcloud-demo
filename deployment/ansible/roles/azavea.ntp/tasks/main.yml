@@ -1,8 +1,0 @@
----
-- name: Install NTP
-  apt: pkg=ntp={{ ntp_version }} state=present
-
-- name: Configure NTP
-  template: src=ntp.conf.j2 dest=/etc/ntp.conf
-  notify:
-    - Restart NTP

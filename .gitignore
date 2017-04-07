@@ -55,6 +55,10 @@ dist/
 *~
 .#*
 
+# Ansible
+deployment/ansible/roles/azavea.*
+deployment/ansible/*.retry
+
 
 # Spring Bootstrap artifacts #
 
