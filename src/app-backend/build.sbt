@@ -22,6 +22,7 @@ lazy val commonSettings = Seq(
   javaOptions ++= Seq(s"-Djava.library.path=${Environment.ldLibraryPath}", "-Xmx10G"),
   test in assembly := {},
   libraryDependencies += { scalaVersion ("org.scala-lang" % "scala-reflect" % _) }.value,
+  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3"),
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   resolvers ++=

@@ -9,12 +9,6 @@ aws s3 cp /etc/hadoop/conf/yarn-site.xml s3://geotrellis-test/pdal-test/
 # Install minimal explicit dependencies.
 sudo yum -y install git geos-devel libcurl-devel cmake libtiff-devel
 
-# Install binaries for pdal
-cd /mnt
-aws s3 cp s3://geotrellis-demo/emr/pdal-binaries-v1.tar.gz .
-tar -xf pdal-binaries-v1.tar.gz
-cd pdal-binaries
-sudo mv pdal /usr/local/bin/pdal
-sudo mv gdal /usr/local/share/gdal
-cd lib
-sudo cp -r * /usr/local/lib
+aws s3 cp s3://geotrellis-pointcloud/pointcloud-demo-libraries.tar.bz2 /tmp
+sudo tar xjf /tmp/pointcloud-demo-libraries.tar.bz2 --directory=/
+sudo ldconfig -n /usr/local/lib
