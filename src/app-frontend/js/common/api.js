@@ -2,22 +2,15 @@ import _ from 'lodash';
 import axios from 'axios';
 
 
-export const baseUrl = (function() {
-    // Should change if deploy or dev
-    var hostname = window.location.hostname;
-    var baseUrl = 'http://' + hostname + ':7070/';
-    return baseUrl;
-})();
-
 export const apiUrl = {
     point : {
-        single : baseUrl + 'stats/point/single/',
-        diff: baseUrl + 'stats/point/diff/',
+        single : 'api/stats/point/single/',
+        diff: 'api/stats/point/diff/'
     },
     poly : {
-        single : baseUrl + 'stats/poly/single/',
-        diff: baseUrl + 'stats/poly/diff/',
-    },
+        single : 'api/stats/poly/single/',
+        diff: 'api/stats/poly/diff/'
+    }
 };
 
 export function singlePointStats(layerName, zoom, point) {

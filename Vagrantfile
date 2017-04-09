@@ -11,14 +11,16 @@ Vagrant.configure(2) do |config|
   config.vm.synced_folder "~/.ivy2", "/home/vagrant/.ivy2"
 
   config.vm.provider :virtualbox do |vb|
-    vb.memory = 4096
-    vb.cpus = 2
+    vb.memory = 8192
+    vb.cpus = 4
   end
 
   # Webpack Dev Server
   config.vm.network :forwarded_port, guest: 8284, host: 8284
-  config.vm.network :forwarded_port, guest: 8000, host: 8000
-  config.vm.network :forwarded_port, guest: 7070, host: 7070
+  # API server
+  config.vm.network :forwarded_port, guest: 9000, host: 9000
+  # nginx
+  config.vm.network :forwarded_port, guest: 9100, host: 9100
 
   # Change working directory to /vagrant upon session start.
   config.vm.provision "shell", inline: <<SCRIPT

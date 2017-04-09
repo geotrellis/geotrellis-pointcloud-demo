@@ -25,7 +25,6 @@ function drawPolygon(map, drawOpts) {
         function drawCreated(e) {
             const layer = e.layer;
             const shape = layer.toGeoJSON();
-            console.log("DRAW CREATED: " + shape);
             clearEvents();
             resolve(shape);
         }

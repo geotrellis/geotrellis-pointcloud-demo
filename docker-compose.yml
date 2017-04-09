@@ -1,20 +1,29 @@
-version: '2'
+version: '2.1'
 services:
-  app:
+  nginx:
+    image: pointcloud-nginx
+    build:
+      context: ./src/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "9100:80"
+    volumes:
+      - ./src/nginx/srv/dist:/srv/dist:ro
+  app-frontend:
     image: node:6.9-slim
     working_dir: /usr/src
     ports:
       - "8284:8284"
     volumes:
         - ./src/app-frontend:/usr/src
-        - ./dist:/usr/dist
+        - ./src/nginx/srv/dist:/usr/src/static
         # Ensure node_modules cache doesn't clash with other jobs on CI.
         - /var/cache/pc-demo-node-modules:/usr/src/node_modules
     command: npm run dev-server
-  server:
+  api-server:
     image: openjdk:8-jre
     ports:
-      - "7070:7070"
+      - "9000:9000"
     volumes:
         - ./src/app-backend/:/opt/app-backend/
         - ./src/app-backend/.sbt:/root/.sbt
@@ -24,4 +33,3 @@ services:
       - AWS_DEFUALT_PROFILE=geotrellis
     working_dir: /opt/app-backend/
     entrypoint: ./sbt
-    command: ~server/reStart

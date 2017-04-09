@@ -97,7 +97,7 @@ export default class Map extends Component {
 
         var hostname = window.location.hostname
 
-        var demLayerUrl = 'http://' + hostname + ':7070/tms/'
+        var demLayerUrl = 'tms/'
 
         let targetLayer = null;
 
@@ -160,8 +160,12 @@ export default class Map extends Component {
                 animate={true}
             >
                 <ZoomControl position="topright" />
+                {/* <TileLayer
+                url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
+                /> */}
+
                 <TileLayer
-                    url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
+                    url="http://{s}.tiles.mapbox.com/v3/azavea.map-zbompf85/{z}/{x}/{y}.png"
                 />
 
                 {/* <TileLayer

@@ -362,205 +362,191 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
       get {
         complete { "pong" }
       }
-    // } ~
-    // pathPrefix("test-pc") {
-    //   // KeyBounds(SpatialKey(106869,205998),SpatialKey(107002,206223))
-    //   complete {
-    //     Future {
-    //       tileReader.reader[SpatialKey, Tile](layerId).read(key)
-    //     }
-    //   }
     } ~
-    pathEndOrSingleSlash {
-      parameter('n.as[Int] ?) { n =>
-        getFromFile(staticPath + index(n))
-      }
-    } ~
-    pathPrefix("") {
-      getFromDirectory(staticPath)
-    } ~
-    pathPrefix("stats") {
-      import spray.json._
-      import DefaultJsonProtocol._
+    pathPrefix("api") {
+      pathPrefix("stats") {
+        import spray.json._
+        import DefaultJsonProtocol._
 
-      pathPrefix("poly") {
-        pathPrefix("single") {
-          pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
-            // post {
-            //   entity(as[String]) { poly =>
-            parameters('poly) { (poly) =>
-                val layerId = LayerId(layerName, zoom)
-                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+        pathPrefix("poly") {
+          pathPrefix("single") {
+            pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
+              // post {
+              //   entity(as[String]) { poly =>
+              parameters('poly) { (poly) =>
+                  val layerId = LayerId(layerName, zoom)
+                  val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
 
-                val cellArea = md.cellSize.width * md.cellSize.height
+                  val cellArea = md.cellSize.width * md.cellSize.height
 
-                val rawGeometry = try {
-                  poly.parseJson.convertTo[Geometry]
-                } catch {
-                  case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
-                }
-
-                val geometry = rawGeometry match {
-                  case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
-                  case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
-                  case _ => sys.error(s"BAD GEOMETRY")
-                }
-
-                val result =
-                  collectionReader
-                    .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layerId)
-                    .where(Intersects(geometry))
-                    .result
-
-                val stats = VolumeStats(result, geometry, cellArea)
-
-                // Mean, Min, Max, Volume
-                cors() {
-                  complete {
-                    Future {
-                      JsObject(
-                        "mean" -> stats.mean.toInt.toJson,
-                        "min" -> stats.min.toInt.toJson,
-                        "max" -> stats.max.toInt.toJson
-                      )
-                    }
-                  }
-                }
-//              }
-            }
-          }
-        } ~
-        pathPrefix("diff") {
-          pathPrefix(Segment / Segment / IntNumber) { (layer1Name, layer2Name, zoom) =>
-            // post {
-            //   entity(as[String]) { poly =>
-            parameters('poly) { (poly) =>
-                val layer1Id = LayerId(layer1Name, zoom)
-                val layer2Id = LayerId(layer2Name, zoom)
-                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layer1Id)
-
-                val cellArea = md.cellSize.width * md.cellSize.height
-
-                val rawGeometry = try {
-                  poly.parseJson.convertTo[Geometry]
-                } catch {
-                  case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
-                }
-
-                val geometry = rawGeometry match {
-                  case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
-                  case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
-                  case _ => sys.error(s"BAD GEOMETRY")
-                }
-
-                val result1 =
-                  collectionReader
-                    .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layer1Id)
-                    .where(Intersects(geometry))
-                    .result
-
-                val result2 =
-                  collectionReader
-                    .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layer2Id)
-                    .where(Intersects(geometry))
-                    .result
-
-                val result = result1.withContext(_ - result2)
-
-                val stats = VolumeStats(result, geometry, cellArea)
-
-                cors() {
-                  complete {
-                    Future {
-                      stats.toJson
-                    }
-                  }
-                }
-              }
-            }
-  //        }
-        }
-      } ~
-      pathPrefix("point") {
-        pathPrefix("single") {
-          pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
-            get {
-              parameters('lat.as[Double], 'lng.as[Double]) { (lat, lng) =>
-
-                val layerId = LayerId(layerName, zoom)
-                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
-
-                val point = Point(lng, lat).reproject(LatLng, md.crs)
-
-                val key = md.layout.mapTransform(point)
-                val extent = md.layout.mapTransform(key)
-
-                val elevationTile =
-                  Future {
-                    getTile(layerId, key)
+                  val rawGeometry = try {
+                    poly.parseJson.convertTo[Geometry]
+                  } catch {
+                    case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
                   }
 
-                val value =
-                  elevationTile.map { tile =>
-                    Raster(tile, extent).getDoubleValueAtPoint(point.x, point.y)
+                  val geometry = rawGeometry match {
+                    case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
+                    case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
+                    case _ => sys.error(s"BAD GEOMETRY")
                   }
 
-                cors() {
-                  complete {
-                    value.map { v =>
-                      JsObject(
-                        "value" -> v.toInt.toJson
-                      )
-                    }
-                  }
-                }
-              }
-            }
-          }
-        } ~
-        pathPrefix("diff") {
-          pathPrefix(Segment / Segment / IntNumber) { (layer1Name, layer2Name, zoom) =>
-            get {
-              parameters('lat.as[Double], 'lng.as[Double]) { (lat, lng) =>
+                  val result =
+                    collectionReader
+                      .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layerId)
+                      .where(Intersects(geometry))
+                      .result
 
-                val layer1Id = LayerId(layer1Name, zoom)
-                val layer2Id = LayerId(layer2Name, zoom)
-                val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layer1Id)
+                  val stats = VolumeStats(result, geometry, cellArea)
 
-                val point = Point(lng, lat).reproject(LatLng, md.crs)
-
-                val key = md.layout.mapTransform(point)
-                val extent = md.layout.mapTransform(key)
-
-                val layer1Tile =
-                  Future {
-                    getTile(layer1Id, key)
-                  }
-
-                val layer2Tile =
-                  Future {
-                    getTile(layer2Id, key)
-                  }
-
-                val values =
-                  for(
-                    t1 <- layer1Tile;
-                    t2 <- layer2Tile
-                  ) yield {
-                    (
-                      Raster(t1, extent).getDoubleValueAtPoint(point.x, point.y),
-                      Raster(t2, extent).getDoubleValueAtPoint(point.x, point.y)
-                    )
-                  }
-
-                cors() {
-                  complete {
-                    Future {
-                      values.map { case (v1, v2) =>
+                  // Mean, Min, Max, Volume
+                  cors() {
+                    complete {
+                      Future {
                         JsObject(
-                          "value1" -> v1.toInt.toJson,
-                          "value2" -> v2.toInt.toJson
+                          "mean" -> stats.mean.toInt.toJson,
+                          "min" -> stats.min.toInt.toJson,
+                          "max" -> stats.max.toInt.toJson
                         )
+                      }
+                    }
+                  }
+  //              }
+              }
+            }
+          } ~
+          pathPrefix("diff") {
+            pathPrefix(Segment / Segment / IntNumber) { (layer1Name, layer2Name, zoom) =>
+              // post {
+              //   entity(as[String]) { poly =>
+              parameters('poly) { (poly) =>
+                  val layer1Id = LayerId(layer1Name, zoom)
+                  val layer2Id = LayerId(layer2Name, zoom)
+                  val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layer1Id)
+
+                  val cellArea = md.cellSize.width * md.cellSize.height
+
+                  val rawGeometry = try {
+                    poly.parseJson.convertTo[Geometry]
+                  } catch {
+                    case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+                  }
+
+                  val geometry = rawGeometry match {
+                    case p: Polygon => MultiPolygon(p.reproject(LatLng, md.crs))
+                    case mp: MultiPolygon => mp.reproject(LatLng, md.crs)
+                    case _ => sys.error(s"BAD GEOMETRY")
+                  }
+
+                  val result1 =
+                    collectionReader
+                      .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layer1Id)
+                      .where(Intersects(geometry))
+                      .result
+
+                  val result2 =
+                    collectionReader
+                      .query[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](layer2Id)
+                      .where(Intersects(geometry))
+                      .result
+
+                  val result = result1.withContext(_ - result2)
+
+                  val stats = VolumeStats(result, geometry, cellArea)
+
+                  cors() {
+                    complete {
+                      Future {
+                        stats.toJson
+                      }
+                    }
+                  }
+                }
+              }
+    //        }
+          }
+        } ~
+        pathPrefix("point") {
+          pathPrefix("single") {
+            pathPrefix(Segment / IntNumber) { (layerName, zoom) =>
+              get {
+                parameters('lat.as[Double], 'lng.as[Double]) { (lat, lng) =>
+
+                  val layerId = LayerId(layerName, zoom)
+                  val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId)
+
+                  val point = Point(lng, lat).reproject(LatLng, md.crs)
+
+                  val key = md.layout.mapTransform(point)
+                  val extent = md.layout.mapTransform(key)
+
+                  val elevationTile =
+                    Future {
+                      getTile(layerId, key)
+                    }
+
+                  val value =
+                    elevationTile.map { tile =>
+                      Raster(tile, extent).getDoubleValueAtPoint(point.x, point.y)
+                    }
+
+                  cors() {
+                    complete {
+                      value.map { v =>
+                        JsObject(
+                          "value" -> v.toInt.toJson
+                        )
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } ~
+          pathPrefix("diff") {
+            pathPrefix(Segment / Segment / IntNumber) { (layer1Name, layer2Name, zoom) =>
+              get {
+                parameters('lat.as[Double], 'lng.as[Double]) { (lat, lng) =>
+
+                  val layer1Id = LayerId(layer1Name, zoom)
+                  val layer2Id = LayerId(layer2Name, zoom)
+                  val md = attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layer1Id)
+
+                  val point = Point(lng, lat).reproject(LatLng, md.crs)
+
+                  val key = md.layout.mapTransform(point)
+                  val extent = md.layout.mapTransform(key)
+
+                  val layer1Tile =
+                    Future {
+                      getTile(layer1Id, key)
+                    }
+
+                  val layer2Tile =
+                    Future {
+                      getTile(layer2Id, key)
+                    }
+
+                  val values =
+                    for(
+                      t1 <- layer1Tile;
+                      t2 <- layer2Tile
+                    ) yield {
+                      (
+                        Raster(t1, extent).getDoubleValueAtPoint(point.x, point.y),
+                        Raster(t2, extent).getDoubleValueAtPoint(point.x, point.y)
+                      )
+                    }
+
+                  cors() {
+                    complete {
+                      Future {
+                        values.map { case (v1, v2) =>
+                          JsObject(
+                            "value1" -> v1.toInt.toJson,
+                            "value2" -> v2.toInt.toJson
+                          )
+                        }
                       }
                     }
                   }
@@ -726,11 +712,6 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
 
                     println(s"pbreaks: ${pbreaks}")
 
-                    /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
-              val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
-
-              println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
-
                     val breaks = pbreaks match {
                       case "none" => {
                         tile
@@ -760,80 +741,7 @@ trait Router extends Directives with CacheSupport with AkkaSystem.LoggerExecutor
             }
           }
         }
-      } // ~
-      // pathPrefix("diff2-tms") {
-      //   pathPrefix("png") {
-      //     pathPrefix(Segment / Segment / Segment / Segment / IntNumber / IntNumber / IntNumber) { (layerName1, layerName2, layerName3, layerName4, zoom, x, y) =>
-      //       parameters(
-      //         'colorRamp ? "green-to-red",
-      //         'breaks ? "-11,-10,-3,-4,-5,-6,-2,-1,-0.1,-0.06,-0.041,-0.035,-0.03,-0.025,-0.02,-0.019,-0.017,-0.015,-0.01,-0.008,-0.002,0.002,0.004,0.006,0.009,0.01,0.013,0.015,0.027,0.04,0.054,0.067,0.1,0.12,0.15,0.23,0.29,0.44,0.66,0.7,1,1.2,1.4,1.6,1.7,2,3,4,5,50,60,70,80,90,150,200",
-      //         'poly ? ""
-      //       ) { (colorRamp, pbreaks, poly) =>
-
-      //         val (layerId1, layerId2, layerId3, layerId4) = (LayerId(layerName1, zoom), LayerId(layerName2, zoom), LayerId(layerName3, zoom), LayerId(layerName4, zoom))
-      //         val key = SpatialKey(x, y)
-      //         val (md1, md2, md3, md4) = (attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId1), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId2), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId3), attributeStore.readMetadata[TileLayerMetadata[SpatialKey]](layerId4))
-      //         val extent = md1.mapTransform(key)
-      //         val polygon =
-      //           if(poly.isEmpty) None
-      //           else Some(poly.parseGeoJson[Polygon].reproject(LatLng, md1.crs))
-
-      //         complete {
-      //           Future {
-      //             val tileOpt =
-      //               try {
-      //                 val tile1 = tileReader.reader[SpatialKey, Tile](layerId1).read(key)
-      //                 val tile2 = tileReader.reader[SpatialKey, Tile](layerId2).read(key)
-      //                 val tile3 = tileReader.reader[SpatialKey, Tile](layerId3).read(key)
-      //                 val tile4 = tileReader.reader[SpatialKey, Tile](layerId4).read(key)
-
-      //                 val diff = (tile1 - tile2) - (tile3 - tile4)
-
-      //                 Some(diff)
-      //               } catch {
-      //                 case e: ValueNotFoundError =>
-      //                   None
-      //               }
-      //             tileOpt.map { t =>
-      //               val tile = polygon.fold(t) { p => t.mask(extent, p.geom) }
-      //               println(s"tile.findMinMaxDouble: ${tile.findMinMaxDouble}")
-
-      //               println(s"pbreaks: ${pbreaks}")
-
-      //               /*val l1 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName1, 19))
-      //           val l2 = layerReader.read[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](LayerId(layerName2, 19))
-
-      //           println(s"zzzz: ${(l1 - l2).histogram(512).asInstanceOf[StreamingHistogram].quantileBreaks(50).toList}")*/
-
-      //               val breaks = pbreaks match {
-      //                 case "none" => {
-      //                   tile
-      //                     .histogramDouble
-      //                     .asInstanceOf[StreamingHistogram]
-      //                     .quantileBreaks(50)
-      //                 }
-      //                 case s => s.split(",").map(_.toDouble)
-      //               }
-
-      //               println(s"breaks: ${breaks.toList}")
-
-      //               val ramp =
-      //                 ColorRampMap
-      //                   .getOrElse(colorRamp, ColorRamps.BlueToRed)
-      //               val colorMap =
-      //                 ramp
-      //                   .toColorMap(breaks, ColorMap.Options(fallbackColor = ramp.colors.last))
-
-      //               val bytes = tile.renderPng(colorMap)
-
-      //               HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), bytes))
-      //             }
-      //           }
-      //         }
-      //       }
-      //     }
-      //   }
-      // }
+      }
   }
 
   def time[T](msg: String)(f: => T): (T, JsObject) = {

@@ -1,6 +1,9 @@
 const webpack = require('webpack');
 const config = require('./webpack.common.config');
 
+const port = 8284;
+const serverport = 9100;
+
 config.output.path = '../';
 
 // Transpiling needs to happen first
@@ -16,15 +19,28 @@ config.module.loaders.unshift(
             env: {
                 development: {
                     presets: ['react-hmre'],
-                },
-            },
-        },
+                }
+            }
+        }
     }
 );
 
+config.devServer =  {
+  contentBase: './dist',
+  info: true,
+  hot: true,
+  inline: true,
+  progress: true,
+  'history-api-fallback': true,
+  port: port,
+  proxy: {
+    '*': { target: 'http://nginx' }
+  }
+};
+
 config.plugins.push(
     new webpack.SourceMapDevToolPlugin({
-        filename: '[file].map',
+        filename: '[file].map'
     })//,
     // new webpack.DefinePlugin({
     //     'process.env': {
@@ -37,7 +53,7 @@ config.plugins.push(
 );
 
 config.watchOptions = {
-    poll: 1000,
+    poll: 1000
 };
 
 module.exports = config;

@@ -1,5 +1,5 @@
 ---
-docker_version: "1.11.*"
+docker_version: "1.12.*"
 docker_compose_version: "1.9.0"
 
 shellcheck_version: "0.3.*"

@@ -1,16 +1,17 @@
 #!/bin/bash
-
 set -e
 
-if [[ -n "${PC_DEMO_DEBUG}" ]]; then
+if [[ -n "${RF_DEBUG}" ]]; then
     set -x
 fi
 
+GIT_COMMIT="${GIT_COMMIT:-latest}"
+DIR="$(dirname "$0")"
+
 function usage() {
     echo -n \
-         "Usage: $(basename "$0")
-
-Builds and pulls container images using docker-compose.
+"Usage: $(basename "$0")
+Run various test suites.
 "
 }
 
@@ -24,10 +25,10 @@ then
         docker-compose \
             run --rm --no-deps api-server update
 
-        # Build React application
+        echo "Executing Scala test suite"
         docker-compose \
-            -f docker-compose.yml \
-            -f docker-compose.test.yml \
-            run --rm --no-deps app-frontend
+            run --rm api-server test
+
     fi
+    exit
 fi

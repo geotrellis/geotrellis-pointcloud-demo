@@ -1,5 +1,7 @@
 name := "pointcloud-server"
 
+assemblyJarName in assembly := "pointcloud-server.jar"
+
 libraryDependencies ++= Seq(
   "org.locationtech.geotrellis" %% "geotrellis-spark"      % Version.geotrellis,
   "org.locationtech.geotrellis" %% "geotrellis-s3"         % Version.geotrellis,
