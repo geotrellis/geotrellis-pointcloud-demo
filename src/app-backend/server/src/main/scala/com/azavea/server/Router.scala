@@ -40,7 +40,7 @@ import akka.http.scaladsl.server._
 import akka.actor.ActorRef
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTypes}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import ch.megard.akka.http.cors.CorsDirectives._
+import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 import spire.syntax.cfor._

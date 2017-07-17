@@ -1,7 +1,7 @@
 lazy val commonSettings = Seq(
   organization := "com.azavea",
-  version := "0.1.0-SNAPHOST",
-  scalaVersion := "2.11.8",
+  version := "0.2.0-SNAPHOST",
+  scalaVersion := "2.11.11",
   scalacOptions ++= Seq(
     "-deprecation",
     "-unchecked",
@@ -22,8 +22,8 @@ lazy val commonSettings = Seq(
   javaOptions ++= Seq(s"-Djava.library.path=${Environment.ldLibraryPath}", "-Xmx10G"),
   test in assembly := {},
   libraryDependencies += { scalaVersion ("org.scala-lang" % "scala-reflect" % _) }.value,
-  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3"),
-  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
+  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.4"),
+  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),
   ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) },
   resolvers ++=
     Seq(
@@ -40,16 +40,16 @@ lazy val commonSettings = Seq(
 )
 
 lazy val root =
-  Project("root", file("."))
+  project.in(file("."))
     .aggregate(server, ingest)
     .settings(commonSettings: _*)
 
 lazy val server =
-  (project in file("server"))
+  project
     .settings(commonSettings: _*)
 
 lazy val ingest =
-  (project in file("ingest"))
+  project
     .settings(commonSettings: _*)
 
 /** Exploritory code, to contain tests
@@ -57,5 +57,5 @@ lazy val ingest =
   * data analysis.
   */
 lazy val explore =
-  (project in file("explore"))
+  project
     .settings(commonSettings: _*)

@@ -15,12 +15,12 @@
  */
 
 object Version {
-  val geotrellis  = "1.1.0-PC-SNAPSHOT-ROB"
+  val geotrellis  = "1.2.0-PC-SNAPSHOT"
   val scala       = "2.11.8"
-  val akkaActor   = "2.4.16"
-  val akkaHttp    = "10.0.3"
-  val scalaTest   = "3.0.1"
-  val ficus       = "1.4.0"
+  val akkaActor   = "2.5.3"
+  val akkaHttp    = "10.0.9"
+  val scalaTest   = "3.0.3"
+  val ficus       = "1.4.1"
   lazy val hadoop = Environment.hadoopVersion
   lazy val spark  = Environment.sparkVersion
 }
