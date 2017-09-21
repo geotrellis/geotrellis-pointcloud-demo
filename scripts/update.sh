@@ -20,14 +20,16 @@ then
     then
         usage
     else
-        echo "Updating Scala dependencies"
-        docker-compose \
-            run --rm --no-deps api-server update
-
+        docker-compose -f docker-compose.yml pull
+        
         # Build React application
         docker-compose \
             -f docker-compose.yml \
-            -f docker-compose.test.yml \
-            run --rm --no-deps app-frontend
+            run --rm --no-deps pc-assets \
+            install --quiet
+
+        docker-compose \
+            -f docker-compose.yml \
+            run --rm --no-deps pc-assets
     fi
 fi

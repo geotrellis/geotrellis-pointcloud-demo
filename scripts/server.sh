@@ -10,9 +10,7 @@ function usage() {
     echo -n \
          "Usage:
 $(basename "$0")
-Starts webpack-dev-server using docker-compose.
-
-Starts servers using docker-compose
+Starts nginx using docker-compose.
 "
 }
 
@@ -22,6 +20,6 @@ then
     then
         usage
     else
-        docker-compose -f docker-compose.yml up
+        docker-compose -f docker-compose.yml up pc-nginx
     fi
 fi
