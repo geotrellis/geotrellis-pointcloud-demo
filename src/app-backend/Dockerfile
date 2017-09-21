@@ -1,6 +1,6 @@
 FROM openjdk:8-jre
 
-ADD server/target/scala-2.11/pointcloud-server-assembly-0.1.0-SNAPSHOT.jar /srv/
+COPY server/target/scala-2.11/pointcloud-server-assembly-0.1.0-SNAPSHOT.jar /srv/
 
 EXPOSE 7070
 
