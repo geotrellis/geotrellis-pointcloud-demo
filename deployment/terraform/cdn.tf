@@ -22,7 +22,7 @@ resource "aws_cloudfront_distribution" "cdn" {
   aliases = ["pointcloud.${replace(data.aws_route53_zone.external.name, "/.$/", "")}"]
 
   default_cache_behavior {
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD", "OPTIONS"]
     target_origin_id = "originPointCloudSite"
 
@@ -31,11 +31,11 @@ resource "aws_cloudfront_distribution" "cdn" {
       headers      = ["*"]
 
       cookies {
-        forward = "all"
+        forward = "none"
       }
     }
 
-    compress               = false
+    compress               = true
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 0
