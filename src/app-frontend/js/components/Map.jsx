@@ -62,7 +62,7 @@ export default class Map extends Component {
 
         var hostname = window.location.hostname
 
-        var tms_endpoint = hostname == 'localhost' ? 'http://localhost:8000/gt/tms/' : 'https://' + hostname + '/gt/tms/'
+        var tms_endpoint = hostname == 'localhost' ? 'http://localhost:8000/gt/tms/' : 'https://' + hostname + '/gt/tms/';
         
         /* var demLayerUrl = 'http://' + hostname + ':7070/tms/png/{layer}/{z}/{x}/{y}?colorRamp={colorRamp}'*/
         console.log(demLayerUrl)
