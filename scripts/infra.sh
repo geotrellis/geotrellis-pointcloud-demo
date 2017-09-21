@@ -6,6 +6,8 @@ if [[ -n "${PC_DEMO_DEBUG}" ]]; then
     set -x
 fi
 
+set -u
+
 DIR="$(dirname "$0")"
 
 function usage() {
@@ -15,71 +17,34 @@ Execute Terraform subcommands with remote state management.
 "
 }
 
-if [[ -n "${GIT_COMMIT}" ]]; then
-    GIT_COMMIT="${GIT_COMMIT:0:7}"
-else
-    GIT_COMMIT="$(git rev-parse --short HEAD)"
-fi
-
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     if [ "${1:-}" = "--help" ]; then
         usage
     else
         TERRAFORM_DIR="${DIR}/../deployment/terraform"
         echo
-        echo "Attempting to deploy application version [${GIT_COMMIT}]..."
+        echo "Attempting to deploy application version [${TRAVIS_COMMIT:0:7}]..."
         echo "-----------------------------------------------------"
         echo
     fi
 
-    if [[ -n "${PC_SETTINGS_BUCKET}" ]]; then
+    if [[ -n "${PC_DEMO_SETTINGS_BUCKET}" ]]; then
         pushd "${TERRAFORM_DIR}"
 
-        # Stop Terraform from trying to apply incorrect state across environments
-        if [ -f ".terraform/terraform.tfstate" ] && ! grep -q "${PC_SETTINGS_BUCKET}" ".terraform/terraform.tfstate"; then
-            echo "ERROR: Incorrect target environment detected in Terraform state! Please run"
-            echo "       the following command before proceeding:"
-            echo
-            echo "  rm -rf terraform/.terraform"
-            echo
-           exit 1
-        fi
-
-        aws s3 cp "s3://${PC_SETTINGS_BUCKET}/terraform/terraform.tfvars" "${PC_SETTINGS_BUCKET}.tfvars"
-
-        terraform remote config \
-                  -backend="s3" \
-                  -backend-config="region=us-east-1" \
-                  -backend-config="bucket=${PC_SETTINGS_BUCKET}" \
-                  -backend-config="key=terraform/state" \
-                  -backend-config="encrypt=true"
-
         case "${1}" in
-            fmt)
-                terraform "$@"
-                ;;
-            taint)
-                terraform "$@"
-                ;;
-            remote-push)
-                terraform remote push
-                ;;
             plan)
-                terraform get -update
+                rm -rf .terraform/ terraform.tfstate*
+                terraform init \
+                    -backend-config="bucket=${PC_DEMO_SETTINGS_BUCKET}" \
+                    -backend-config="key=terraform/pointcloud/state"
+
                 terraform plan \
-                          -var-file="${PC_SETTINGS_BUCKET}.tfvars" \
-                          -var="git_commit=${GIT_COMMIT}" \
-                          -out="${PC_SETTINGS_BUCKET}.tfplan"
-                ;;
-            destroy)
-                terraform get -update
-                terraform destroy -var-file="${PC_SETTINGS_BUCKET}.tfvars"
-                terraform remote push
+                          -var="image_version=\"${TRAVIS_COMMIT:0:7}\"" \
+                          -var="remote_state_bucket=\"${PC_DEMO_SETTINGS_BUCKET}\"" \
+                          -out="${PC_DEMO_SETTINGS_BUCKET}.tfplan"
                 ;;
             apply)
-                terraform get -update
-                terraform apply "${PC_SETTINGS_BUCKET}.tfplan"
-                terraform remote push
+                terraform apply "${PC_DEMO_SETTINGS_BUCKET}.tfplan"
                 ;;
             *)
                 echo "ERROR: I don't have support for that Terraform subcommand!"
@@ -89,7 +54,7 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 
         popd
     else
-        echo "ERROR: No PC_SETTINGS_BUCKET variable defined."
+        echo "ERROR: No PC_DEMO_SETTINGS_BUCKET variable defined."
         exit 1
     fi
 fi

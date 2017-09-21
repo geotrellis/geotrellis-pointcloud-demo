@@ -93,3 +93,4 @@ src/app-frontend/sass-bak/
 nginx/_site
 *.log
 src/app-frontend/jest
+*.tfstate*

@@ -1,12 +1,16 @@
-variable "project" {
-  default = "PointCloud Demo"
+variable "environment" {
+  default = "Production"
 }
 
-variable "project_id" {
-  default = "PCDEMO"
+variable "remote_state_bucket" {
+  type        = "string"
+  description = "Core infrastructure config bucket"
 }
 
-variable "environment" {}
+variable "aws_account_id" {
+  default     = "896538046175"
+  description = "Geotrellis PointCloud account ID"
+}
 
 # AWS
 
@@ -14,57 +18,35 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-variable "aws_availability_zones" {
-  default = ["us-east-1c", "us-east-1d"]
+variable "image_version" {
+  type        = "string"
+  description = "Geotrellis PointCloud API server & Nginx Image versions"
 }
 
-variable "aws_key_name" {}
-
-# ECS
-
-variable "api_server_image" {}
-variable "nginx_image" {}
-
-variable "desired_instance_count" {}
-variable aws_ecs_ami {}
-variable ecs_instance_type {}
-
-
-# IAM
-
-variable "aws_ecs_for_ec2_service_role_policy_arn" {
-  default = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+variable "cdn_price_class" {
+  default = "PriceClass_200"
 }
 
-variable "aws_ecs_service_role_policy_arn" {
-  default = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole"
+variable "ssl_certificate_arn" {
+  default = "arn:aws:acm:us-east-1:896538046175:certificate/a416c2af-00dd-4afd-8c71-dd32edefa839"
 }
 
-variable "aws_s3_policy_arn" {
-  default = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+variable "pointcloud_ecs_desired_count" {
+  default = "1"
 }
 
-variable "aws_cloudwatch_logs_policy_arn" {
-  default = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+variable "pointcloud_ecs_min_count" {
+  default = "1"
 }
 
+variable "pointcloud_ecs_max_count" {
+  default = "2"
+}
 
-# VPC
+variable "pointcloud_ecs_deployment_min_percent" {
+  default = "100"
+}
 
-# variable vpc_cidr_block {}
-# variable vpc_external_access_cidr_block {}
-# variable "vpc_private_subnet_cidr_blocks" {
-#   default = ["10.0.1.0/24", "10.0.3.0/24"]
-# }
-
-# variable "vpc_public_subnet_cidr_blocks" {
-#   default = ["10.0.0.0/24", "10.0.2.0/24"]
-# }
-
-# variable vpc_bastion_ami {}
-# variable vpc_bastion_instance_type {}
-
-variable vpc_id {}
-variable vpc_subnet_ids {
-  default = []
+variable "pointcloud_ecs_deployment_max_percent" {
+  default = "200"
 }
