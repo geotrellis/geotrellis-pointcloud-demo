@@ -1,0 +1,12 @@
+version: '2.1'
+services:
+  pc-api-server:
+    image: pointcloud-api-server:${TRAVIS_COMMIT}
+    build:
+        context: ./src/app-backend
+        dockerfile: Dockerfile
+  pc-nginx:
+    image: pointcloud-nginx:${TRAVIS_COMMIT}
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
