@@ -1,64 +1,51 @@
 resource "aws_cloudfront_distribution" "cdn" {
   origin {
-    domain_name = "${aws_s3_bucket.site.id}.s3.amazonaws.com"
-    origin_id   = "originEastId"
+    domain_name = "${aws_route53_record.origin.fqdn}"
+    origin_id   = "originPointCloudSite"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1", "TLSv1.1", "TLSv1.2"]
+    }
   }
 
-  enabled             = true
-  http_version        = "http2"
-  comment             = "PGW Community Mapping (${var.environment})"
-  default_root_object = "index.html"
-  retain_on_delete    = true
+  enabled          = true
+  http_version     = "http2"
+  comment          = "GeoTrellis PointCloud Demo (${var.environment})"
+  retain_on_delete = true
 
-  price_class = "PriceClass_All"
-  aliases     = ["${var.r53_public_hosted_zone_name}"]
+  price_class = "${var.cdn_price_class}"
+
+  # The trailing period at the end of the name is stripped off to comply with CloudFront's CNAME policy.
+  aliases = ["pointcloud.${replace(data.aws_route53_zone.external.name, "/.$/", "")}"]
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = "originEastId"
+    target_origin_id = "originPointCloudSite"
 
     forwarded_values {
-      query_string = false
+      query_string = true
+      headers      = ["*"]
 
       cookies {
-        forward = "none"
+        forward = "all"
       }
     }
 
-    compress               = true
+    compress               = false
     viewer_protocol_policy = "redirect-to-https"
-
-    # Only applies if the origin adds Cache-Control headers. The
-    # CloudFront default is also 0.
-    min_ttl = 0
-
-    # Five minutes, and only applies when the origin DOES NOT
-    # supply Cache-Control headers.
-    default_ttl = 300
-
-    # One day, but only applies if the origin adds Cache-Control
-    # headers. The CloudFront default is 31536000 (one year).
-    max_ttl = 86400
-  }
-
-  custom_error_response {
-    error_caching_min_ttl = "0"
-    error_code            = "403"
-    response_code         = "200"
-    response_page_path    = "/index.html"
-  }
-
-  custom_error_response {
-    error_caching_min_ttl = "0"
-    error_code            = "404"
-    response_code         = "200"
-    response_page_path    = "/index.html"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 300
   }
 
   logging_config {
     include_cookies = false
-    bucket          = "${aws_s3_bucket.logs.id}.s3.amazonaws.com"
+    bucket          = "${data.terraform_remote_state.core.logs_bucket_id}.s3.amazonaws.com"
+    prefix          = "CloudFront/PointCloud/"
   }
 
   restrictions {
@@ -68,7 +55,7 @@ resource "aws_cloudfront_distribution" "cdn" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = "${var.aws_certificate_arn}"
+    acm_certificate_arn      = "${var.ssl_certificate_arn}"
     minimum_protocol_version = "TLSv1"
     ssl_support_method       = "sni-only"
   }

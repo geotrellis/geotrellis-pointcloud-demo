@@ -1,0 +1,39 @@
+[
+    {
+        "name": "pc-nginx",
+        "image": "${pc_nginx_image}",
+        "cpu": 10,
+        "memory": 512,
+        "essential": true,
+        "links": ["pc-api-server"],
+        "portMappings": [
+            {
+                "containerPort": 443,
+                "hostPort": 0
+            }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "log${pc_environment}PointCloudDemo",
+                "awslogs-region": "${pc_region}",
+                "awslogs-stream-prefix": "pointcloud-demo"
+            }
+        }
+    },
+    {
+        "name": "pc-api-server",
+        "image": "${pc_api_server_image}",
+        "cpu": 10,
+        "memoryReservation": 2048,
+        "essential": true,
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "log${pc_environment}PointCloudDemo",
+                "awslogs-region": "${pc_region}",
+                "awslogs-stream-prefix": "pointcloud-demo"
+            }
+        }
+    }
+]
