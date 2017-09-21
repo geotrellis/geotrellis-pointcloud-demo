@@ -28,6 +28,9 @@ deployment/terraform/.terraform
 *.tfstate
 *.tfplan
 
+# Ansible
+deployment/ansible/roles/azavea.*
+
 # Node and Webpack
 node_modules/
 npm-debug.log
