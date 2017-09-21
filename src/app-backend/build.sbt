@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
   organization := "com.azavea",
-  version := "0.1.0-SNAPHOST",
+  version := "0.1.0-SNAPSHOT",
   scalaVersion := "2.11.8",
   scalacOptions ++= Seq(
     "-deprecation",
@@ -29,6 +29,7 @@ lazy val commonSettings = Seq(
     Seq(
       "geosolutions" at "http://maven.geo-solutions.it/",
       "osgeo" at "http://download.osgeo.org/webdav/geotools/",
+      "Sontaype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
       "LocationTech GeoTrellis Snapshots" at "https://repo.locationtech.org/content/repositories/geotrellis-snapshots"
     ),
   assemblyMergeStrategy in assembly := {
