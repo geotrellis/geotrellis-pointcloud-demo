@@ -62,6 +62,8 @@ export default class Map extends Component {
 
         var hostname = window.location.hostname
 
+        var tms_endpoint = hostname == 'localhost' ? 'http://localhost:8000/gt/tms/' : 'https://' + hostname + '/gt/tms/'
+        
         /* var demLayerUrl = 'http://' + hostname + ':7070/tms/png/{layer}/{z}/{x}/{y}?colorRamp={colorRamp}'*/
         console.log(demLayerUrl)
         console.log(layer)
@@ -70,7 +72,7 @@ export default class Map extends Component {
 
         let renderMethodPath = renderMethod == "COLORRAMP" ? "png" : "hillshade";
 
-        let demLayerUrl = 'http://' + hostname + ':7070/tms/' + renderMethodPath + '/' + targetLayerPath + '/{z}/{x}/{y}?colorRamp={colorRamp}'
+        let demLayerUrl = tms_endpoint + renderMethodPath + '/' + targetLayerPath + '/{z}/{x}/{y}?colorRamp={colorRamp}'
 
         let targetLayer = [<TileLayer
                                key="targetLayer"
@@ -99,11 +101,11 @@ export default class Map extends Component {
                 animate
             >
                 <TileLayer
-                    url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
+                    url="https://stamen-tiles.a.ssl.fastly.net/terrain-background/{z}/{x}/{y}@2x.jpg"
                 />
 
                 <TileLayer
-                    url="http://tile.stamen.com/toner-labels/{z}/{x}/{y}@2x.png"
+                    url="https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}@2x.png"
                 />
 
               {targetLayer}
