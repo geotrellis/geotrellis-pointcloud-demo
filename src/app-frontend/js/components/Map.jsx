@@ -97,7 +97,7 @@ export default class Map extends Component {
 
         var hostname = window.location.hostname
 
-        var demLayerUrl = 'tms/'
+        var demLayerUrl = hostname == 'localhost' ? 'http://localhost:8000/gt/tms/' : 'https://' + hostname + '/gt/tms/'
 
         let targetLayer = null;
 
@@ -173,7 +173,7 @@ export default class Map extends Component {
                 /> */}
 
                 <TileLayer
-                    url="http://tile.stamen.com/toner-labels/{z}/{x}/{y}@2x.png"
+                    url="https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}@2x.png"
                 />
 
                 {targetLayer}

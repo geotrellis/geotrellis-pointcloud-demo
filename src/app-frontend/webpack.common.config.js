@@ -6,7 +6,7 @@ module.exports = {
     },
     output: {
         path: __dirname,
-        filename: 'pgw.communitymapping.[hash].js',
+        filename: 'geotrellis.pointcloud-demo.[hash].js',
     },
     eslint: {
         configFile: '.eslintrc',
