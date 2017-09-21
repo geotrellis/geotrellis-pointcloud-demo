@@ -97,9 +97,11 @@ export default class Map extends Component {
 
         var hostname = window.location.hostname
 
-        var demLayerUrl = hostname == 'localhost' ? 'http://localhost:8000/gt/tms/' : 'https://' + hostname + '/gt/tms/'
-
-        let targetLayer = null;
+        var tms_endpoint = hostname == 'localhost' ? 'http://localhost:8000/gt/tms/' : 'https://' + hostname + '/gt/tms/';
+        
+        /* var demLayerUrl = 'http://' + hostname + ':7070/tms/png/{layer}/{z}/{x}/{y}?colorRamp={colorRamp}'*/
+        console.log(demLayerUrl)
+        console.log(layer)
 
         if(singleLayer.active) {
             let layerName = singleLayer.targetLayerName == "SNOW-ON" ? LN.snowOn : LN.snowOff;
