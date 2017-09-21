@@ -29,7 +29,7 @@ lazy val commonSettings = Seq(
     Seq(
       "geosolutions" at "http://maven.geo-solutions.it/",
       "osgeo" at "http://download.osgeo.org/webdav/geotools/",
-      "Sontaype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
       "LocationTech GeoTrellis Snapshots" at "https://repo.locationtech.org/content/repositories/geotrellis-snapshots"
     ),
   assemblyMergeStrategy in assembly := {
