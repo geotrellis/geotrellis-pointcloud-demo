@@ -21,10 +21,11 @@ services:
     volumes:
         - ./src/app-backend/:/opt/app-backend/
         - ./src/app-backend/.sbt:/root/.sbt
-        - /home/vagrant/.ivy2/:/root/.ivy2
-        - $HOME/.aws:/root/.aws:ro
+        - ${HOME}/.ivy2/:/root/.ivy2
+        - ${HOME}/.aws:/root/.aws:ro
     environment:
-      - AWS_DEFUALT_PROFILE=geotrellis
+      - AWS_PROFILE=geotrellis
+      - JAVA_OPTS="-Xmx1G"
     working_dir: /opt/app-backend/
     entrypoint: ./sbt
     command: ~server/reStart
