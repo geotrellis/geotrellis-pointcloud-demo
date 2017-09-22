@@ -48,6 +48,7 @@ lazy val root =
 lazy val server =
   (project in file("server"))
     .settings(commonSettings: _*)
+    .settings(assemblyJarName in assembly := "pointcloud-server.jar")
 
 lazy val ingest =
   (project in file("ingest"))
