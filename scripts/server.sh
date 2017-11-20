@@ -20,6 +20,6 @@ then
     then
         usage
     else
-        docker-compose -f docker-compose.yml up pc-nginx
+        docker-compose -f docker-compose.yml up pc-nginx pc-api-server
     fi
 fi
