@@ -4,5 +4,5 @@ docker_compose_version: "1.16.0"
 
 shellcheck_version: "0.3.*"
 
-aws_profile: "pc-demo"
+aws_profile: "geotrellis"
 aws_cli_version: "1.11.30"
