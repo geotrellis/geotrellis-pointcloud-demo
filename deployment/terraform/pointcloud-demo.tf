@@ -21,7 +21,8 @@ resource "aws_ecs_task_definition" "pointcloud" {
 }
 
 resource "aws_cloudwatch_log_group" "pointcloud" {
-  name = "log${var.environment}PointCloudDemo"
+  name              = "log${var.environment}PointCloudDemo"
+  retention_in_days = "30"
 
   tags {
     Environment = "${var.environment}"
