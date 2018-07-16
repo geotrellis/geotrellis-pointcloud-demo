@@ -34,11 +34,15 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
         case "${1}" in
             plan)
                 rm -rf .terraform/ terraform.tfstate*
+
+                aws s3 cp "s3://${PC_DEMO_SETTINGS_BUCKET}/terraform/pointcloud/terraform.tfvars" \
+                    "${PC_DEMO_SETTINGS_BUCKET}.tfvars"
                 terraform init \
                     -backend-config="bucket=${PC_DEMO_SETTINGS_BUCKET}" \
                     -backend-config="key=terraform/pointcloud/state"
 
                 terraform plan \
+                          -var-file="${PC_DEMO_SETTINGS_BUCKET}.tfvars" \
                           -var="image_version=\"${TRAVIS_COMMIT:0:7}\"" \
                           -var="remote_state_bucket=\"${PC_DEMO_SETTINGS_BUCKET}\"" \
                           -out="${PC_DEMO_SETTINGS_BUCKET}.tfplan"
