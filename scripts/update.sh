@@ -31,5 +31,10 @@ then
         docker-compose \
             -f docker-compose.yml \
             run --rm --no-deps pc-assets
+
+        # Update scala dependencies
+        docker-compose \
+            -f docker-compose.yml \
+            run --rm --no-deps pc-api-server update
     fi
 fi
