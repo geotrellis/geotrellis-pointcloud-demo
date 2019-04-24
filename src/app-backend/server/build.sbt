@@ -3,7 +3,7 @@ name := "pointcloud-server"
 libraryDependencies ++= Seq(
   "org.locationtech.geotrellis" %% "geotrellis-spark"      % Version.geotrellis,
   "org.locationtech.geotrellis" %% "geotrellis-s3"         % Version.geotrellis,
-  "org.locationtech.geotrellis" %% "geotrellis-pointcloud" % Version.geotrellis,
+  "com.azavea.geotrellis"       %% "geotrellis-pointcloud" % Version.pointcloud,
   "com.github.blemale" %% "scaffeine" % "2.0.0",
   "com.typesafe.akka" %% "akka-actor"           % Version.akkaActor,
   "com.typesafe.akka" %% "akka-http-core"       % Version.akkaHttp,
