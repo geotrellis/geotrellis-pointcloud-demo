@@ -1,37 +1,33 @@
-import axios from 'axios';
-import { map, filter } from 'lodash';
+import immutable from 'object-path-immutable';
 
 import {
-    numericLabel,
-    sentenceCase,
-    formatCivicInfoUrl,
-} from 'utils';
+    singlePointStats,
+    diffPointStats,
+    singlePolyStats,
+    diffPolyStats,
+} from 'api';
 
-import {
-    cartoContainQuery,
-    cartoRadiusQuery,
-} from 'carto';
-
-import { censusApiQuery, transformData } from 'census';
-
+export const SET_ZOOM = "SET_ZOOM";
 export const SET_TARGET_LAYER = 'SET_TARGET_LAYER';
 export const SET_TARGET_LAYER_OPACITY = 'SET_TARGET_LAYER_OPACITY';
 export const SET_DATA_SOURCE_TYPE = 'SET_DATA_SOURCE_TYPE';
+export const SET_DEM_ALGORITHM = 'SET_DEM_ALGORITHM';
 export const SET_RENDER_METHOD = 'SET_RENDER_METHOD';
+export const CLEAR_GEOMETRIES = 'CLEAR_GEOMETRIES';
+export const SET_POLYGON = 'SET_POLYGON';
+export const SET_POINT = 'SET_POINT';
+export const SET_ANALYSIS_ON = 'SET_ANALYSIS_ON';
+export const SET_ACTIVE_TAB = 'SET_ACTIVE_TAB';
+export const START_FETCH_STATS = 'START_FETCH_STATS';
+export const END_FETCH_STATS = 'END_FETCH_STATS';
+export const FAIL_FETCH_STATS = 'FAIL_FETCH_STATS';
 
-export const START_FETCH_CARTO = 'START_FETCH_CARTO';
-export const COMPLETE_FETCH_CARTO = 'COMPLETE_FETCH_CARTO';
-export const FAIL_FETCH_CARTO = 'FAIL_FETCH_CARTO';
-export const RESET_ADDRESS_DATA = 'RESET_ADDRESS_DATA';
-export const SET_RADIUS = 'SET_RADIUS';
-export const START_FETCH_CIVIC_INFO = 'START_FETCH_CIVIC_INFO';
-export const COMPLETE_FETCH_CIVIC_INFO = 'COMPLETE_FETCH_CIVIC_INFO';
-export const FAIL_FETCH_CIVIC_INFO = 'FAIL_FETCH_CIVIC_INFO';
-
-export const SET_HOVER_GEOM = 'SET_HOVER_GEOM';
-export const CLEAR_HOVER_GEOM = 'CLEAR_HOVER_GEOM';
-export const SET_HIGHLIGHTED_GEOM = 'SET_HIGHLIGHTED_GEOM';
-export const CLEAR_HIGHLIGHTED_GEOM = 'CLEAR_HIGHLIGHTED_GEOM';
+export function setZoom(zoom) {
+    return {
+        type: SET_ZOOM,
+        payload: zoom,
+    };
+}
 
 export function setTargetLayerName(layerName) {
     return {
@@ -61,255 +57,104 @@ export function setRenderMethod(method) {
     };
 }
 
-
-export function clearHoverGeom() {
+export function setDEMAlgorithm(method) {
     return {
-        type: CLEAR_HOVER_GEOM,
+        type: SET_DEM_ALGORITHM,
+        payload: method
     };
 }
 
-export function setHighlightedGeom(geom, card) {
+export function clearGeometries() {
     return {
-        type: SET_HIGHLIGHTED_GEOM,
-        payload: {
-            geom,
-            card,
-        },
+        type: CLEAR_GEOMETRIES,
+        payload: null,
     };
 }
 
-export function clearHighlightedGeom() {
+export function setPolygon(polygon) {
     return {
-        type: CLEAR_HIGHLIGHTED_GEOM,
+        type: SET_POLYGON,
+        payload: polygon,
     };
 }
 
-export function clearAllGeom() {
-    return dispatch => {
-        dispatch(clearHoverGeom());
-        dispatch(clearHighlightedGeom());
-    };
-}
-
-export function resetAddressData() {
+export function setPoint(point) {
     return {
-        type: RESET_ADDRESS_DATA,
+        type: SET_POINT,
+        payload: point,
     };
 }
 
-export function setRadius(radius) {
+export function setAnalysisOn(flag) {
     return {
-        type: SET_RADIUS,
-        payload: radius,
+        type: SET_ANALYSIS_ON,
+        payload: flag
     };
 }
 
-export const START_CENSUS_FETCH = 'START_CENSUS_FETCH';
-export const COMPLETE_CENSUS_FETCH = 'COMPLETE_CENSUS_FETCH';
-export const FAIL_CENSUS_FETCH = 'FAIL_CENSUS_FETCH';
-export const UPDATE_DEMOGRAPHICS_DATA = 'UPDATE_DEMOGRAPHICS_DATA';
-
-function startCartoFetch(dataset) {
+export function setActiveTab(idx) {
     return {
-        type: START_FETCH_CARTO,
-        payload: {
-            [dataset]: {
-                data: [],
-                fetching: true,
-                error: {},
-            },
-        },
+        type: SET_ACTIVE_TAB,
+        payload: idx
     };
 }
 
-function doneCartoFetch(dataset, data) {
+export function startFetchStats() {
+    console.log("START_FETCH_STATS");
     return {
-        type: COMPLETE_FETCH_CARTO,
-        payload: {
-            [dataset]: {
-                data,
-                fetching: false,
-                error: {},
-            },
-        },
+        type: START_FETCH_STATS,
+        payload: null
     };
 }
 
-function failCartoFetch(dataset, error) {
+export function endFetchStats(result) {
+    console.log("END_FETCH_STATS: " + result);
     return {
-        type: FAIL_FETCH_CARTO,
-        payload: {
-            [dataset]: {
-                data: [],
-                fetching: false,
-                error,
-            },
-        },
-        error: true,
+        type: END_FETCH_STATS,
+        payload: result
     };
 }
 
-export function startCensusFetch(dataset) {
+export function failFetchStats(error) {
+    console.log("FAIL_FETCH_STATS: " + error);
     return {
-        type: START_CENSUS_FETCH,
-        payload: {
-            [dataset]: {
-                data: [],
-                fetching: true,
-                error: {},
-            },
-        },
+        type: FAIL_FETCH_STATS,
+        payload: error
     };
 }
 
-export function completeCensusFetch(dataset, data) {
-    const mappedData = transformData(data);
-    return {
-        type: COMPLETE_CENSUS_FETCH,
-        payload: {
-            [dataset]: {
-                mappedData,
-                fetching: false,
-                error: {},
-            },
-        },
-    };
-}
-
-export function failCensusFetch(dataset, error) {
-    return {
-        type: FAIL_CENSUS_FETCH,
-        payload: {
-            [dataset]: {
-                data: [],
-                fetching: false,
-                error,
-            },
-        },
-    };
-}
-
-export function updateDemographicsData() {
-    return {
-        type: UPDATE_DEMOGRAPHICS_DATA,
-    };
-}
-
-function fetchCartoDataset(dataset, parser) {
-    return (center, radius) => (dispatch) => {
-        dispatch(startCartoFetch(dataset));
-        cartoRadiusQuery(dataset, center, radius)
-            .then(({ data }) => dispatch(doneCartoFetch(dataset, map(data.features, parser))))
-            .catch(error => dispatch(failCartoFetch(dataset, error)));
-    };
-}
-
-export function fetchCensusData(dataset, tracts) {
-    return dispatch => {
-        dispatch(startCensusFetch(dataset, tracts));
-        censusApiQuery(tracts)
-            .then(({ data }) => dispatch(completeCensusFetch(dataset, data)))
-            .then(() => dispatch(updateDemographicsData()))
-            .catch(error => dispatch(failCensusFetch(dataset, error)));
-    };
-}
-
-const fetchCensusTracts = fetchCartoDataset('censusTracts', d => d.properties.tractce10);
-
-const fetchPoliceDistricts = fetchCartoDataset('policeDistricts', ({ properties, geometry }) => ({
-    name: `${numericLabel(properties.dist_num)} District`,
-    address: properties.location,
-    phone: properties.phone,
-    geometry,
-}));
-
-const fetchCommunityOrgs = fetchCartoDataset('communityOrgs', ({ properties, geometry }) => ({
-    name: properties.organizati,
-    address: properties.primary_ad,
-    phone: properties.primary_ph,
-    contactPerson: properties.primary_na,
-    description: properties.primary_em,
-    geometry,
-}));
-
-const fetchFireStations = fetchCartoDataset('fireStations', ({ properties, geometry }) => {
-    const { eng, lad, firesta_, location } = properties;
-    const engine = eng > 0 ? `Engine ${eng}` : '';
-    const ladder = lad > 0 ? `Ladder ${lad}` : '';
-    const station = firesta_ > 0 ? `Station ${firesta_}` : '';
-    const description = filter([engine, ladder], s => s.length > 0).join(', ');
-
-    return {
-        name: sentenceCase(location),
-        address: station,
-        description,
-        geometry,
-    };
-});
-
-const fetchNec = fetchCartoDataset('nec', ({ properties, geometry }) => ({
-    name: properties.name,
-    address: properties.address,
-    phone: properties.phone,
-    geometry,
-}));
-
-const fetchNac = fetchCartoDataset('nac', ({ properties, geometry }) => ({
-    name: properties.organizati,
-    address: sentenceCase(properties.address),
-    phone: properties.phone,
-    contactPerson: sentenceCase(properties.contact),
-    description: properties.contact_ti,
-    geometry,
-}));
-
-function fetchNeighborhood(center) {
+export function fetchSinglePointStats(layerName, zoom, point) {
     return (dispatch) => {
-        dispatch(startCartoFetch('neighborhoods'));
-        cartoContainQuery('neighborhoods', center)
-            .then(({ data }) => dispatch(doneCartoFetch('neighborhoods',
-                                                        map(data.rows, r => r.listname))))
-            .catch(error => dispatch(failCartoFetch('neighborhoods', error)));
+        dispatch(startFetchStats());
+        singlePointStats(layerName, zoom, point)
+            .then(({ data }) => dispatch(endFetchStats(immutable.set(data, 'type', 'point'))))
+            .catch(error => dispatch(failFetchStats(error)));
     };
 }
 
-export function fetchAllData(center, radius) {
+export function fetchDiffPointStats(layer1Name, layer2Name, zoom, point) {
     return (dispatch) => {
-        dispatch(fetchNeighborhood(center));
-        dispatch(fetchCensusTracts(center, radius));
-        dispatch(fetchCommunityOrgs(center, radius));
-        dispatch(fetchPoliceDistricts(center, radius));
-        dispatch(fetchFireStations(center, radius));
-        dispatch(fetchNec(center, radius));
-        dispatch(fetchNac(center, radius));
+        dispatch(startFetchStats());
+        diffPointStats(layer1Name, layer2Name, zoom, point)
+            .then(({ data }) => dispatch(endFetchStats(immutable.set(data, 'type', 'point'))))
+            .catch(error => dispatch(failFetchStats(error)));
     };
 }
 
-function startFetchCivicInfo() {
-    return {
-        type: START_FETCH_CIVIC_INFO,
-    };
-}
-
-function completeFetchCivicInfo(data) {
-    return {
-        type: COMPLETE_FETCH_CIVIC_INFO,
-        payload: data,
-    };
-}
-
-function failFetchCivicInfo() {
-    return {
-        type: FAIL_FETCH_CIVIC_INFO,
-    };
-}
-
-export function fetchCivicInfo(street) {
-    const civicInfoUrl = formatCivicInfoUrl(street);
+export function fetchSinglePolyStats(layerName, zoom, poly) {
     return (dispatch) => {
-        dispatch(startFetchCivicInfo());
-        axios.get(civicInfoUrl)
-             .then(({ data }) => dispatch(completeFetchCivicInfo(data)))
-             .catch(() => dispatch(failFetchCivicInfo()));
+        dispatch(startFetchStats());
+        singlePolyStats(layerName, zoom, poly)
+            .then(({ data }) => dispatch(endFetchStats(immutable.set(data, 'type', 'poly'))))
+            .catch(error => dispatch(failFetchStats(error)));
+    };
+}
+
+export function fetchDiffPolyStats(layer1Name, layer2Name, zoom, poly) {
+    return (dispatch) => {
+        dispatch(startFetchStats());
+        diffPolyStats(layer1Name, layer2Name, zoom, poly)
+            .then(({ data }) => dispatch(endFetchStats(immutable.set(data, 'type', 'poly'))))
+            .catch(error => dispatch(failFetchStats(error)));
     };
 }

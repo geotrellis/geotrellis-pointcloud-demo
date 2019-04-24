@@ -20,10 +20,21 @@ then
     then
         usage
     else
+        docker-compose -f docker-compose.yml pull
+        
         # Build React application
         docker-compose \
             -f docker-compose.yml \
-            run --rm --no-deps app \
-            npm install --quiet
+            run --rm --no-deps pc-assets \
+            install --quiet
+
+        docker-compose \
+            -f docker-compose.yml \
+            run --rm --no-deps pc-assets
+
+        # Update scala dependencies
+        docker-compose \
+            -f docker-compose.yml \
+            run --rm --no-deps pc-api-server update
     fi
 fi

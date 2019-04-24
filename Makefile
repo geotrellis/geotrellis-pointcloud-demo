@@ -18,7 +18,7 @@ COLOR_TAG=--tags Color=${COLOR}
 endif
 
 ifndef CLUSTER_ID
-CLUSTER_ID=$(shell if [ -e "cluster-id.txt" ]; then cat cluster-id.txt; fi)
+CLUSTER_ID=$(shell if [ -e "cluster-id-${EMR_TAG}.txt" ]; then cat cluster-id-${EMR_TAG}.txt; fi)
 endif
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
@@ -59,7 +59,7 @@ create-cluster:
 'Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE}' \
 --bootstrap-actions \
 Name=BootstrapPDAL,Path=${S3_URI}/bootstrap-pdal.sh \
-| tee cluster-id.txt
+| tee cluster-id-${EMR_TAG}.txt
 
 ingest-idw:
 	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
@@ -167,7 +167,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
 --layerName,jul10tin,\
---numPartitions,50000,\
+--numPartitions,${PARTITION_COUNT},\
 --persist,true,\
 --pyramid,true,\
 --zoomed,true\
@@ -191,7 +191,7 @@ ${S3_URI}/pointcloud-ingest-assembly-0.1.0-SNAPHOST.jar,\
 --catalogPath,${S3_CATALOG},\
 --inputCrs,'+proj=utm +zone=13 +datum=NAD83 +units=m +no_defs',\
 --layerName,mar10tin,\
---numPartitions,50000,\
+--numPartitions,${PARTITION_COUNT},\
 --persist,true,\
 --pyramid,true,\
 --zoomed,true\

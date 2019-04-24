@@ -118,13 +118,10 @@ object IngestTINPyramid extends Ingest {
 
       val layer = ContextRDD(tiles, md)
 
-      // layer.cache()
-
       def buildPyramid(zoom: Int, rdd: TileLayerRDD[SpatialKey])
                       (sink: (TileLayerRDD[SpatialKey], Int) => Unit): List[(Int, TileLayerRDD[SpatialKey])] = {
         println(s":::buildPyramid: $zoom")
         if (zoom >= opts.minZoom) {
-          // rdd.cache()
           sink(rdd, zoom)
           val pyramidLevel @ (nextZoom, nextRdd) = Pyramid.up(rdd, layoutScheme, zoom, Pyramid.Options(Bilinear))
           pyramidLevel :: buildPyramid(nextZoom, nextRdd)(sink)
@@ -138,7 +135,7 @@ object IngestTINPyramid extends Ingest {
         val writer = getWriter
         val attributeStore = writer.attributeStore
 
-        var savedHisto = false
+        var savedHistoCount = 0
         if (opts.pyramid) {
           buildPyramid(zoom, layer) { (rdd, zoom) =>
             writer
@@ -150,8 +147,7 @@ object IngestTINPyramid extends Ingest {
 
             println(s"=============================INGEST ZOOM LVL: $zoom=================================")
 
-            if (!savedHisto) {
-              savedHisto = true
+            if (savedHistoCount == 2) {
               val histogram = rdd.histogram(512)
               attributeStore.write(
                 LayerId(opts.layerName, 0),
@@ -159,7 +155,8 @@ object IngestTINPyramid extends Ingest {
                 histogram
               )
             }
-          }.foreach { case (z, rdd) => rdd.unpersist(true) }
+            savedHistoCount += 1
+          }
         } else {
           writer
             .write[SpatialKey, Tile, TileLayerMetadata[SpatialKey]](
@@ -168,8 +165,7 @@ object IngestTINPyramid extends Ingest {
             ZCurveKeyIndexMethod
           )
 
-          if (!savedHisto) {
-            savedHisto = true
+          if (savedHistoCount == 2) {
             val histogram = layer.histogram(512)
             attributeStore.write(
               LayerId(opts.layerName, 0),
@@ -177,6 +173,7 @@ object IngestTINPyramid extends Ingest {
               histogram
             )
           }
+          savedHistoCount += 1
         }
       }
 
@@ -189,8 +186,8 @@ object IngestTINPyramid extends Ingest {
         case _ => if(!opts.persist) println(s":::layer.count: ${layer.count}")
       }
 
-      layer.unpersist(blocking = false)
-      source.unpersist(blocking = false)
+      // layer.unpersist(blocking = false)
+      // source.unpersist(blocking = false)
 
     } finally sc.stop()
   }

@@ -1,3 +1,0 @@
----
-- name: Install unzip
-  apt: pkg=unzip={{ unzip_version }} state=present

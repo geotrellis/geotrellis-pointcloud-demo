@@ -28,6 +28,9 @@ deployment/terraform/.terraform
 *.tfstate
 *.tfplan
 
+# Ansible
+deployment/ansible/roles/azavea.*
+
 # Node and Webpack
 node_modules/
 npm-debug.log
@@ -83,3 +86,7 @@ catalog/
 viewer
 viewer2
 src/app-frontend/sass-bak/
+nginx/_site
+*.log
+src/app-frontend/jest
+*.tfstate*

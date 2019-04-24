@@ -1,27 +1,40 @@
-version: '2'
+version: '2.1'
 services:
-  app:
+  pc-assets:
     image: node:6.9-slim
     working_dir: /usr/src
     ports:
       - "8284:8284"
+    environment:
+      - VERSION=${TRAVIS_COMMIT}
     volumes:
         - ./src/app-frontend:/usr/src
-        - ./dist:/usr/dist
+        - ./nginx/_site:/usr/dist
         # Ensure node_modules cache doesn't clash with other jobs on CI.
         - /var/cache/pc-demo-node-modules:/usr/src/node_modules
-    command: npm run dev-server
-  server:
+    entrypoint: npm
+    command: run bundle
+  pc-api-server:
     image: openjdk:8-jre
     ports:
       - "7070:7070"
     volumes:
         - ./src/app-backend/:/opt/app-backend/
         - ./src/app-backend/.sbt:/root/.sbt
-        - /home/vagrant/.ivy2/:/root/.ivy2
-        - $HOME/.aws:/root/.aws:ro
+        - ${HOME}/.ivy2/:/root/.ivy2
+        - ${HOME}/.aws:/root/.aws:ro
     environment:
-      - AWS_DEFUALT_PROFILE=geotrellis
+      - AWS_PROFILE=geotrellis
+      - JAVA_OPTS="-Xmx1G"
     working_dir: /opt/app-backend/
     entrypoint: ./sbt
     command: ~server/reStart
+  pc-nginx:
+    image: nginx:1.13
+    depends_on:
+      - pc-api-server
+    ports:
+      - "8000:443"
+    volumes:
+      - ./nginx/_site:/var/www
+      - ./nginx/etc/nginx/nginx.conf:/etc/nginx/nginx.conf

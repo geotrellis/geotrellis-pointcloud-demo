@@ -8,7 +8,7 @@
 
   roles:
     - { role: "azavea.ntp" }
-    - { role: "azavea.terraform" }
+    - { role: "azavea.python-security" }
     - { role: "pc-demo.aws-cli" }
     - { role: "pc-demo.docker" }
     - { role: "pc-demo.shellcheck" }

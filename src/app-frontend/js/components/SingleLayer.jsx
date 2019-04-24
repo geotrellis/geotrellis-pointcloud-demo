@@ -6,7 +6,8 @@ import {
     setTargetLayerOpacity,
     setDataSourceType,
     setTargetLayerName,
-    setRenderMethod
+    setRenderMethod,
+    setDEMAlgorithm
 } from './actions';
 
 export default class SingleLayer extends Component {
@@ -20,6 +21,8 @@ export default class SingleLayer extends Component {
         this.checkSnowOff = this.checkSnowOff.bind(this);
         this.checkColorRamp = this.checkColorRamp.bind(this);
         this.checkHillshade = this.checkHillshade.bind(this);
+        this.checkIdw = this.checkIdw.bind(this);
+        this.checkTin = this.checkTin.bind(this);
     }
 
     handleTargetLayerOpacityChange(value) {
@@ -30,12 +33,12 @@ export default class SingleLayer extends Component {
 
     checkStatic() {
         const { dispatch } = this.props;
-        dispatch(setDataSourceType("DYNAMIC"));
+        dispatch(setDataSourceType("STATIC"));
     }
 
     checkDynamic() {
         const { dispatch } = this.props;
-        dispatch(setDataSourceType("STATIC"));
+        dispatch(setDataSourceType("DYNAMIC"));
     }
 
     checkSnowOn() {
@@ -58,13 +61,20 @@ export default class SingleLayer extends Component {
         dispatch(setRenderMethod("HILLSHADE"));
     }
 
-    /* checkIdw() {
-     *     dispatch(setDEMAlogrithm("IDW"));
-     * }
+    checkIdw() {
+        const { dispatch } = this.props;
+        dispatch(setDEMAlgorithm("IDW"));
+    }
 
-     * checkTin() {
-     *     dispatch(setDEMAlgorithm("TIN"));
-     * }*/
+    checkTin() {
+        const { dispatch } = this.props;
+        dispatch(setDEMAlgorithm("TIN"));
+    }
+
+    isActive(b) {
+        console.log("BOOLEAN " + b);
+        return b ? "pt-active" : "";
+    }
 
     render() {
         const {
@@ -80,27 +90,41 @@ export default class SingleLayer extends Component {
 
         return (
             <div className="content tab-content content-singlelayer active">
-                <div className="option-section">
-                    <label htmlFor="" className="primary">Data Source Type</label>
-                    <div className="pt-button-group pt-fill">
-                        <Button
-                            active={staticChecked}
-                            onClick={this.checkStatic}
-                            text="Static"
-                            className="pt-active"
-                        />
-                        <Button
-                            active={dynamicChecked}
-                            onClick={this.checkDynamic}
-                            text="Dynamic"
-                        />
-                    </div>
-                    <label htmlFor="" className="secondary">Min &amp; Max Elevation</label>
-                    <div>(Slider)</div>
+                {/* <div className="option-section">
+                <label htmlFor="" className="primary">Data Source Type</label>
+                <div className="pt-button-group pt-fill">
+                <Button
+                active={staticChecked}
+                onClick={this.checkStatic}
+                text="Static"
+                className={this.isActive(staticChecked)}
+                />
+                <Button
+                active={dynamicChecked}
+                onClick={this.checkDynamic}
+                text="Dynamic"
+                className={this.isActive(dynamicChecked)}
+                />
                 </div>
+                <label htmlFor="" className="secondary" style={{display: "none"}}>Min &amp; Max Elevation</label>
+                <div style={{display: "none"}}>(Slider)</div>
+                </div> */}
                 <div className="option-section">
                     <label htmlFor="" className="primary">DEM Creation Method</label>
-                    <div>(Tab: TIN, DEM)</div>
+                    <div className="pt-button-group pt-fill">
+                        <Button
+                            active={tinChecked}
+                            onClick={this.checkTin}
+                            text="TIN"
+                            className={this.isActive(tinChecked)}
+                        />
+                        <Button
+                            active={idwChecked}
+                            onClick={this.checkIdw}
+                            text="IDW"
+                            className={this.isActive(idwChecked)}
+                        />
+                    </div>
                 </div>
                 <div className="option-section">
                     <label htmlFor="" className="primary">Render Options</label>
@@ -109,11 +133,13 @@ export default class SingleLayer extends Component {
                             active={colorRampChecked}
                             onClick={this.checkColorRamp}
                             text="Color Ramp"
+                            className={this.isActive(colorRampChecked)}
                         />
                         <Button
                             active={hillshadeChecked}
                             onClick={this.checkHillshade}
                             text="Hillshade"
+                            className={this.isActive(hillshadeChecked)}
                         />
                     </div>
                     <label htmlFor="" className="secondary">Opacity</label>
@@ -135,11 +161,13 @@ export default class SingleLayer extends Component {
                             active={snowOnChecked}
                             onClick={this.checkSnowOn}
                             text="Snow On"
+                            className={this.isActive(snowOnChecked)}
                         />
                         <Button
                             active={snowOffChecked}
                             onClick={this.checkSnowOff}
-                            text="No Layer"
+                            text="Snow Off"
+                            className={this.isActive(snowOffChecked)}
                         />
                     </div>
                 </div>

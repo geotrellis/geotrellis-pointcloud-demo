@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
   organization := "com.azavea",
-  version := "0.1.0-SNAPHOST",
+  version := "0.1.0-SNAPSHOT",
   scalaVersion := "2.11.8",
   scalacOptions ++= Seq(
     "-deprecation",
@@ -29,7 +29,9 @@ lazy val commonSettings = Seq(
     Seq(
       "geosolutions" at "http://maven.geo-solutions.it/",
       "osgeo" at "http://download.osgeo.org/webdav/geotools/",
-      "LocationTech GeoTrellis Snapshots" at "https://repo.locationtech.org/content/repositories/geotrellis-snapshots"
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+      "LocationTech GeoTrellis Snapshots" at "https://repo.locationtech.org/content/repositories/geotrellis-snapshots",
+      "GeoTrellis Bintray" at "https://dl.bintray.com/azavea/geotrellis/"
     ),
   assemblyMergeStrategy in assembly := {
     case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
@@ -47,7 +49,16 @@ lazy val root =
 lazy val server =
   (project in file("server"))
     .settings(commonSettings: _*)
+    .settings(assemblyJarName in assembly := "pointcloud-server.jar")
 
 lazy val ingest =
   (project in file("ingest"))
+    .settings(commonSettings: _*)
+
+/** Exploritory code, to contain tests
+  * and spark jobs that are meant for initial
+  * data analysis.
+  */
+lazy val explore =
+  (project in file("explore"))
     .settings(commonSettings: _*)

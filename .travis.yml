@@ -1,0 +1,30 @@
+sudo: false
+language: bash
+cache:
+  directories:
+  - ${HOME}/.ivy2
+  - ./src/app-backend/.sbt
+  - /var/cache/pc-demo-node-modules
+services: docker
+env:
+  global:
+  - DOCKER_COMPOSE_VERSION=1.13.*
+  - AWS_CLI_VERSION=1.11.*
+  - PC_DEMO_SETTINGS_BUCKET=geotrellis-site-production-config-us-east-1
+  - PC_DEMO_DEBUG=1
+  - AWS_DEFAULT_REGION=us-east-1
+  - secure: MrNiiDRp5XKdmFkjoJ6yetR/6kQMdcMX5ctR8LftaFK3reV0Hks4VnarRi1aJ0o7MXacpSunIpY8+QLBio93/rYMTiqfKZgbFTnHdSg9QKPhwNvb/oB3L4TL6PTcPzdOwvoLbuatpb5dUjXC7u61ufXc7DnbUUTjgDE9ArRsPVRdLW9MlSV93YLSuKjpQi/Wp+nhczMd4wxbw+BbIUnQ97/jnUD4fl2+IKfnMqKfCItbbNXsbl6l+NG5sRVVoEvj4LdBj51aXorwmdaAoj+GDfwujZ+ucsT6X1ScXUIw9ZqALIRYl/94MxSKAiokJ3RgFskPRiCgtWgBy/MiQnvHvrbp/g4bOpivehHCM52E3HChx3qLo87mbJumNP+z30jk4VBqzega/OdYg1W5gBKYmczOd/r/SCVhq7zKqLHl20OFXxl5uQijj8ols2LO/Dw4RB56aeeBbd5ZIzNbuLD1UoH4avybLaIcZop5yyhlO5/EjTtFEnoWKmM+Qq2LMOzFBPnzKml/7NkTtqj4Iz8jqzXT7Wpp6w1WmGM9Eq8DpRJNUkghI/iA/3/pT4MW3QamZRxZrJNNJCWfm042CVQekN/+7QBzSvaviJPnqi9AHuIizI8hhchci613piSLwHrlBrpUDAveyJf0tBqB7ari1c8KhOF0WMsBzj7vhr7jjKk=
+  - secure: TL1RndWnR6Q6/F3piX+oSOWk5GFER7/qQphe+qah8S7il2NBFWGPOtmpRUQWQ9S9ZUQLNRFsCZFfVZ+a1wADGCn4TXSyIb3Ltd3q4KX3PUkue5FVovylo6TYZEU6gWmPOmwzajJGLjSBYXYQkztvbBKx1e3ZpiKgcXto77KQq13EvORlMcjrvCystzvzosHYTQXxRnM/b4uEPsk5+qS9ZhPYwr24F3DpZpdKbH1ejFhRV78PKJxrYh9BghI6akWPfY9/Ja7Z2H+CCguXon0MG1c94rN06TqZYvIi5nzj0g1FyAkS3zfDui5sMNb/x5Svv3RmI8OBgqHqQSESD38O2pZqxGWJenICz6lUMmtPmqYqF7LQdoQM9lINuQc17Zyh7/yScTYZgPnJiOuvGLEZUetc9+9mzMTv9ijbI8zBst0ha4rfPAiDIoxUqTacpsrvu1NF99wkwIQIJMR/mzK5rxwwkm1fO9Yr+yTr9GxqyMrNf/A6KBZr4qe8wBg54l70djj9syRIj278rqiI/k6klY5mW/3nE7HCybkV3KGEYDfwVEVdr1VxpUhOtJFcxYurJPP5m4Li+gw7lsO5MuJVFrNoRW6xoqlbkLI94SigDgxlKGaD/16DfkYzv/5uODueKpydchlf1Q9dcv8fhvI7UN+CLQLaffcUI68nH4cX8PU=
+  - secure: hdUprYCSVeDZl1NCLSBji1lKbwrvTc/zVb7NyUcC7aLu/XMSIhsvAhuqjUEL6UURPA8w8SJzY13SChnFJkf47gFSWDF8iSfqt5vAvny/GG0E6Ec7ChamqslZB3Xy7TtXUQgdYKWv05UkRhSxf18DHjnBBeBj7bprRzmYPGbA45zhhX7ZIuSxcxALmBLCKrBDF4CwQgtjBCix2WuyVrvO2yt/VhBVg3sftE6J6BfBTOySQDxi4zRFP4KRAACE9qu6n6wI4ZykIPrqEH2OgePWMspUohNJVV4v4TVvjpASZstz1NSgBy1TbP2N/ETjvKrkEBA1tnhCoouKL7n1A+hqGVInbrlVAcnd4uegmhUbcpwx6TiLxhY8Mnq/Hvs72Pa79PRodCHv8FTyxCuhXHLLfb6EfjH1RvflI0mS8BxJMhTdmkjmii1Y9FxoK/4+tI81u+m0F68JC8rtzFvlpKeOThzDUyE2amMx0fVAm9fWnv88VKqp73NpnaBmAZNaVQaRdTVw9mhROSFUj9/o6HUUTQOCzdh0GNo+tQjySXQiZmKuS9MjuVU8mHz8XtvZIm0q1j0rugdWSXpa/tzUmmaEqXPMEjn2TF7cLo2TY6SMQ1eS6WjeM5ewC5w0cMtmWEx7uhn8/IRAXaDyCR8LxLftm6pi9n/cMMgVdTqpRs3V+Pc=
+script:
+- mkdir -p ~/.local/bin
+- export PATH="~/.local/bin:$PATH"
+- pip install --user docker-compose==${DOCKER_COMPOSE_VERSION} awscli==${AWS_CLI_VERSION}
+- scripts/update.sh
+- scripts/cibuild.sh
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: scripts/deploy.sh
+  on:
+    branch: master
