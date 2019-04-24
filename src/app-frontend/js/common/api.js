@@ -3,12 +3,12 @@ import axios from 'axios';
 
 export const apiUrl = {
     point : {
-        single : 'api/stats/point/single/',
-        diff: 'api/stats/point/diff/'
+        single : 'gt/api/stats/point/single/',
+        diff: 'gt/api/stats/point/diff/'
     },
     poly : {
-        single : 'api/stats/poly/single/',
-        diff: 'api/stats/poly/diff/'
+        single : 'gt/api/stats/poly/single/',
+        diff: 'gt/api/stats/poly/diff/'
     }
 };
 
