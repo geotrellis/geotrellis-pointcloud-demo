@@ -16,28 +16,20 @@ config.module.loaders.unshift(
             env: {
                 development: {
                     presets: ['react-hmre'],
-                },
-            },
-        },
+                }
+            }
+        }
     }
 );
 
 config.plugins.push(
     new webpack.SourceMapDevToolPlugin({
-        filename: '[file].map',
-    })//,
-    // new webpack.DefinePlugin({
-    //     'process.env': {
-    //         NODE_ENV: JSON.stringify('development'),
-    //         MAPZEN_API_KEY: config.apiKeysConfig.MAPZEN_API_KEY,
-    //         CIVIC_INFO_API_KEY: config.apiKeysConfig.CIVIC_INFO_API_KEY,
-    //         CENSUS_API_KEY: config.apiKeysConfig.CENSUS_API_KEY,
-    //     },
-    // })
+        filename: '[file].map'
+    })
 );
 
 config.watchOptions = {
-    poll: 1000,
+    poll: 1000
 };
 
 module.exports = config;

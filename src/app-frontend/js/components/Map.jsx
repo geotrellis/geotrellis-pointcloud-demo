@@ -161,7 +161,7 @@ export default class Map extends Component {
             >
                 <ZoomControl position="topright" />
                 <TileLayer
-                    url="http://tile.stamen.com/terrain-background/{z}/{x}/{y}@2x.jpg"
+                    url="http://{s}.tiles.mapbox.com/v3/azavea.map-zbompf85/{z}/{x}/{y}.png"
                 />
 
                 {/* <TileLayer
@@ -169,7 +169,7 @@ export default class Map extends Component {
                 /> */}
 
                 <TileLayer
-                    url="https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}@2x.png"
+                    url="http://tile.stamen.com/toner-labels/{z}/{x}/{y}@2x.png"
                 />
 
                 {targetLayer}
