@@ -27,4 +27,4 @@ deploy:
   skip_cleanup: true
   script: scripts/deploy.sh
   on:
-    branch: tnation/update-deployment-cherrypicks
+    branch: master
